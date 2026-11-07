@@ -1,0 +1,16 @@
+{
+  "mode": "rule-based baseline (no LLM)",
+  "episodes": 50,
+  "lines": 3727,
+  "candidates_valid": 132,
+  "candidates_rejected": 3,
+  "candidates_rejected_then_repaired": 0,
+  "montages_rejected": 0,
+  "final_promos": 30,
+  "montages": 0,
+  "rank_runs_ok": null,
+  "late_payoff_episodes": [],
+  "seconds": 1.4,
+  "llm": null,
+  "stage_models": null
+}

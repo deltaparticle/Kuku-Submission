@@ -1,0 +1,16 @@
+{
+  "outputs/I_Married_a_Broken_Soldier_He_was_a_Duke_script/llm-run-5": {
+    "rule_checks": {
+      "promos": 32,
+      "pass_rate": 1.0,
+      "failures": []
+    }
+  },
+  "outputs/I_Married_a_Broken_Soldier_He_was_a_Duke_script/llm-run-6": {
+    "rule_checks": {
+      "promos": 35,
+      "pass_rate": 1.0,
+      "failures": []
+    }
+  }
+}

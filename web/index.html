@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PromoFinder: find the promos in a microdrama</title>
+  <meta name="description" content="Reads a timestamped microdrama screenplay and returns ranked 20-60 s promo clips: hook in the first 3 s, cliffhanger ending, makes sense alone.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="logo">▶</span>
+    <div>
+      <h1>PromoFinder</h1>
+      <p class="tag">Finds and ranks 20–60 s promo clips in microdrama screenplays. The AI names script lines; code computes every timestamp.</p>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="results" role="tab">Official results</button>
+    <button class="tab" data-tab="run" role="tab">Run on your episodes</button>
+    <button class="tab" data-tab="how" role="tab">How it works</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ OFFICIAL RESULTS ============ -->
+  <section id="tab-results" class="panel active">
+    <div id="official-intro" class="intro">
+      <h2 id="official-title">Loading results…</h2>
+      <p class="muted" id="official-sub"></p>
+      <div class="stats" id="official-stats"></div>
+    </div>
+    <div id="official-view"></div>
+  </section>
+
+  <!-- ============ RUN ============ -->
+  <section id="tab-run" class="panel">
+    <div class="run-grid">
+      <div class="card form">
+        <h2>1 · Episodes</h2>
+        <label class="drop" id="drop">
+          <input type="file" id="files" accept=".zip,.txt" multiple hidden>
+          <strong>Drop a .zip of episodes or .txt screenplays here</strong>
+          <span class="muted">or click to choose files · read in your browser, never uploaded to us</span>
+        </label>
+        <div class="or">or</div>
+        <button class="btn ghost" id="use-sample">Use the sample show (50 episodes)</button>
+        <div id="loaded" class="loaded muted">No episodes loaded yet.</div>
+
+        <h2>2 · Mode</h2>
+        <div class="seg" id="mode">
+          <button class="seg-btn active" data-mode="ai">AI pipeline</button>
+          <button class="seg-btn" data-mode="baseline">Instant baseline (no key)</button>
+        </div>
+
+        <div id="ai-opts">
+          <div class="row">
+            <label>Provider
+              <select id="provider">
+                <option value="gemini">Google Gemini</option>
+                <option value="openai">OpenAI</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="groq">Groq</option>
+                <option value="custom">Custom (OpenAI-compatible URL)</option>
+              </select>
+            </label>
+            <label>Speed
+              <select id="profile">
+                <option value="fast">Fast (~3–6 min for 50 eps)</option>
+                <option value="thorough">Thorough (as the official run)</option>
+              </select>
+            </label>
+          </div>
+          <label id="baseurl-wrap" hidden>Base URL
+            <input id="baseurl" placeholder="https://your-gateway.example.com/v1/">
+          </label>
+          <label>API key <span class="muted">(stays in this tab; sent only to the provider)</span>
+            <input id="key" type="password" autocomplete="off" placeholder="paste your key">
+          </label>
+          <div class="row">
+            <label>Candidate model <span class="muted">(1 call / episode)</span>
+              <input id="bulk-model">
+            </label>
+            <label>Judge model <span class="muted">(bible, scoring, ranking)</span>
+              <input id="judge-model">
+            </label>
+          </div>
+          <label class="check"><input type="checkbox" id="montage" checked> Also build montage promos (2–3 joined moments)</label>
+        </div>
+
+        <button class="btn primary big" id="run-btn" disabled>Find promos</button>
+        <p class="muted small" id="engine-note">The Python engine (~10 MB, cached after the first visit) loads when you add episodes.</p>
+      </div>
+
+      <div class="card progress" id="progress-card" hidden>
+        <h2>Progress <span class="muted" id="elapsed"></span></h2>
+        <div id="stages"></div>
+        <details><summary>Log</summary><pre id="log"></pre></details>
+      </div>
+    </div>
+    <div id="run-view"></div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section id="tab-how" class="panel">
+    <div class="card prose">
+      <h2>The one idea</h2>
+      <p>The model only ever returns <b>line IDs</b> (e.g. <code>E07_L042</code>). Code computes, snaps and checks every
+        timestamp, so a clip can never start mid-sentence or carry an invented time.</p>
+      <pre class="mermaid" id="diagram">flowchart LR
+    IN["Episode<br/>screenplays"] --> P["0 Parse<br/>line IDs + safe cuts"]
+    P --> B["1 Story bible<br/>+ spoiler vote"]
+    P --> C["2 Candidates<br/>3 per episode, IDs only"]
+    B --> C
+    C <--> V{"3 Validate + snap<br/>20-60 s, hook in 3 s,<br/>end on cliffhanger"}
+    V -- "rejected: legal-fix hints" --> C
+    V --> AT["Text attention<br/>first voice, motion,<br/>dead air"]
+    V --> S["4 Rubric score<br/>6 criteria"]
+    S --> R["5 Rank<br/>3 shuffled runs, Borda<br/>+ penalties + quality bar<br/>+ diversity"]
+    AT --> R
+    B -. spoiler episodes .-> R
+    R --> M["6 Montages<br/>2-3 joined moments"]
+    R --> O["7 Ranked promos"]
+    M --> O
+    O --> H["Editor<br/>approve / reject"]
+    classDef ai fill:#efe7fb,stroke:#7b5cc4,color:#2b1d52
+    classDef code fill:#e6f2ea,stroke:#3c8c5a,color:#14361f
+    classDef io fill:#e8f0fb,stroke:#4a72b0,color:#152a4a
+    classDef human fill:#fdf0e1,stroke:#c98a2c,color:#4a2f08
+    class B,C,S,M ai
+    class P,V,AT,R code
+    class IN,O io
+    class H human</pre>
+      <p class="muted small">Purple = AI judgement · green = deterministic code · orange = human.</p>
+      <h2>What is AI, what is code, where the human stays</h2>
+      <table class="tbl">
+        <tr><th>Step</th><th>Done by</th><th>Why</th></tr>
+        <tr><td>Understand the story, propose moments, judge hook / cliffhanger / clarity, rank</td><td>AI</td><td>Needs judgement about drama</td></tr>
+        <tr><td>Timestamps, 20–60 s, hook in 3 s, safe cuts, end on the cliffhanger, no overlap, ≤2 per episode</td><td>Code</td><td>Models cannot do timestamp arithmetic reliably</td></tr>
+        <tr><td>Spoiler episodes</td><td>AI vote (2 of 3) or an editor's fixed list</td><td>The judge's per-clip opinion was unstable</td></tr>
+        <tr><td>Text attention (first voice, motion, close-ups, dead air)</td><td>Code</td><td>A screenplay stand-in for video attention tools</td></tr>
+        <tr><td>Final approval</td><td>Editor</td><td>Approve / Reject on every card, exported as CSV</td></tr>
+      </table>
+      <h2>Swap the model</h2>
+      <p>Any OpenAI-compatible endpoint works (Gemini, OpenAI, OpenRouter, Groq, or a company gateway): pick it in
+        <i>Run on your episodes</i>, or edit <code>config.yaml</code> for the command-line tool.</p>
+      <p><a id="repo-link" href="https://github.com/deltaparticle/Kuku-Assignment" target="_blank" rel="noopener">Source code and run steps on GitHub →</a></p>
+    </div>
+  </section>
+</main>
+
+<footer class="muted small">PromoFinder · everything runs in your browser · <a href="https://github.com/deltaparticle/Kuku-Assignment" target="_blank" rel="noopener">GitHub</a></footer>
+
+<template id="tpl-card">
+  <article class="promo">
+    <div class="promo-head">
+      <span class="rank"></span>
+      <div class="where"></div>
+      <div class="pills"></div>
+    </div>
+    <div class="timeline"></div>
+    <div class="hook"><span class="lbl">Hook</span><q></q></div>
+    <div class="cliff"><span class="lbl">Ends on</span><q></q></div>
+    <p class="question"></p>
+    <p class="why"></p>
+    <p class="ranknote muted small"></p>
+    <div class="metrics"></div>
+    <details class="script"><summary>Script</summary><pre></pre></details>
+    <div class="actions">
+      <button class="btn small approve">✓ Approve</button>
+      <button class="btn small reject">✕ Reject</button>
+      <span class="decision muted small"></span>
+    </div>
+  </article>
+</template>
+
+<script src="app.js"></script>
+</body>
+</html>

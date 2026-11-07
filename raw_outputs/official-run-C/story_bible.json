@@ -1,0 +1,231 @@
+{
+  "premise": "After being publicly abandoned at the altar for her cruel sister, an outcast noblewoman accepts the sudden proposal of a scarred, mysterious war veteran who is secretly the rightful duke in hiding.",
+  "genre_tropes": [
+    "altar betrayal",
+    "contract marriage",
+    "hidden identity",
+    "secret billionaire/duke",
+    "revenge",
+    "evil sister",
+    "wronged heiress",
+    "cottagecore healing"
+  ],
+  "characters": [
+    {
+      "name": "Juliana",
+      "aliases": [
+        "JULIANA",
+        "LADY JULIANA",
+        "LADY JULIANA (Off-screen) (Vulnerable, Begging)",
+        "LADY JULIANA (Off-screen) (Sharp, Piercing)"
+      ],
+      "role": "Disowned noblewoman and skilled herbalist betrayed at the altar"
+    },
+    {
+      "name": "Alexander",
+      "aliases": [
+        "ALEXANDER",
+        "MYSTERIOUS BEARDED MAN",
+        "THE BEARDED STRANGER",
+        "SCARRED BEARDED MAN"
+      ],
+      "role": "Scarred war veteran living in exile, secretly the rightful Duke of Ashburn"
+    },
+    {
+      "name": "Catherine",
+      "aliases": [
+        "CATHERINE",
+        "LADY CATHERINE",
+        "LADY IN GOLD GOWN",
+        "LADY IN GOLD GOWN (Off-screen) (Scornful)",
+        "LADY IN GOLD GOWN (Off-screen) (Snide)",
+        "LADY IN GOLD GOWN (Off-screen) (Vicious)"
+      ],
+      "role": "Scheming noblewoman allied with Rupert to seize the Ashbury dukedom"
+    },
+    {
+      "name": "Rupert",
+      "aliases": [
+        "RUPERT",
+        "BLOND NOBLEMAN",
+        "BLOND NOBLEMAN (Rupert) (Cold, Calculating)",
+        "BLOND NOBLEMAN (Rupert) (Authoritative)",
+        "BLOND NOBLEMAN (Rupert) (Sinister, Ruthless)",
+        "BLOND NOBLEMAN (Rupert) (Decisive)"
+      ],
+      "role": "Traitorous usurper who stole Alexander's ducal seat"
+    },
+    {
+      "name": "Gerald Harrington",
+      "aliases": [
+        "GERALD",
+        "THE FORMER GROOM",
+        "LORD HARRINGTON",
+        "THE FORMER GROOM (Off-screen) (Dismissive)"
+      ],
+      "role": "Juliana's dishonorable ex-fiancé who abandons her at the altar"
+    },
+    {
+      "name": "Clarissa",
+      "aliases": [
+        "CLARISSA",
+        "LADY CLARISSA"
+      ],
+      "role": "Juliana's spiteful sister who steals Gerald"
+    },
+    {
+      "name": "Dowager Duchess",
+      "aliases": [
+        "DOWAGER DUCHESS",
+        "ALEXANDER'S MOTHER",
+        "NOBLE MATRIARCH",
+        "MATRIARCH"
+      ],
+      "role": "Alexander's captive mother, secretly poisoned with arsenic by the usurpers"
+    },
+    {
+      "name": "Prudence",
+      "aliases": [
+        "PRUDENCE",
+        "MAID"
+      ],
+      "role": "Manor maid who assists Juliana in treating the Dowager Duchess"
+    },
+    {
+      "name": "Father Thomas",
+      "aliases": [
+        "FATHER THOMAS",
+        "THE PRIEST",
+        "PRIEST"
+      ],
+      "role": "Corrupt clergyman engaged in a clandestine affair with Catherine"
+    },
+    {
+      "name": "Lord Sterling",
+      "aliases": [
+        "LORD STERLING",
+        "ELDER NOBLEMAN",
+        "LORD"
+      ],
+      "role": "Conspiring aristocrat aiding Rupert's usurpation of the ducal seat"
+    },
+    {
+      "name": "High Priest",
+      "aliases": [
+        "HIGH PRIEST"
+      ],
+      "role": "Crown religious authority who challenges the validity of Juliana and Alexander's marriage"
+    }
+  ],
+  "episode_roles": {
+    "1": "setup",
+    "2": "escalation",
+    "3": "inciting",
+    "4": "reversal",
+    "5": "escalation",
+    "6": "setup",
+    "7": "escalation",
+    "8": "escalation",
+    "9": "escalation",
+    "10": "cliffhanger-hand-off",
+    "11": "escalation",
+    "12": "escalation",
+    "13": "climax",
+    "14": "resolution",
+    "15": "escalation",
+    "16": "reversal",
+    "17": "resolution",
+    "18": "escalation",
+    "19": "inciting",
+    "20": "escalation",
+    "21": "escalation",
+    "22": "escalation",
+    "23": "reversal",
+    "24": "escalation",
+    "25": "escalation",
+    "26": "reversal",
+    "27": "cliffhanger-hand-off",
+    "28": "escalation",
+    "29": "escalation",
+    "30": "escalation",
+    "31": "escalation",
+    "32": "escalation",
+    "33": "escalation",
+    "34": "climax",
+    "35": "reversal",
+    "36": "escalation",
+    "37": "escalation",
+    "38": "cliffhanger-hand-off",
+    "39": "escalation",
+    "40": "escalation",
+    "41": "climax",
+    "42": "climax",
+    "43": "climax",
+    "44": "resolution",
+    "45": "reversal",
+    "46": "escalation",
+    "47": "reversal",
+    "48": "escalation",
+    "49": "escalation",
+    "50": "cliffhanger-hand-off"
+  },
+  "selling_reveals": [
+    "Juliana is publicly discarded at the altar by Gerald, only for a mysterious scarred soldier to step forward and propose on the spot.",
+    "Juliana's impoverished, wounded cottage husband is in truth the presumed-dead rightful Duke of Ashburn.",
+    "Juliana infiltrates the grand estate as a scullery maid and cures the poisoned Dowager Duchess, who recognizes the Ashbourne ducal ring on Juliana's hand."
+  ],
+  "late_payoffs": [
+    {
+      "what": "Alexander's mother escapes captivity and reunites with her presumed-dead son",
+      "episodes": [
+        35
+      ]
+    },
+    {
+      "what": "Alexander shatters the cathedral doors in full ducal regalia, reclaims his birthright, and halts Juliana's execution",
+      "episodes": [
+        41,
+        42
+      ]
+    },
+    {
+      "what": "Rupert and Lord Sterling are exposed for treason by Crown officials and arrested",
+      "episodes": [
+        43,
+        44
+      ]
+    },
+    {
+      "what": "Catherine is publicly rejected, stripped of her nobility, and demoted to a scullery maid under Juliana",
+      "episodes": [
+        44,
+        47
+      ]
+    }
+  ],
+  "episodes_to_avoid_for_early_funnel": [
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50
+  ]
+}

@@ -1,0 +1,22 @@
+# secrets and caches
+.env
+.streamlit/secrets.toml
+.cache/
+.cache-*/
+__pycache__/
+*.pyc
+
+# working data (the official raw outputs are copied into raw_outputs/)
+outputs/
+episodes/
+_subset/
+I Married a Broken Soldier*/
+
+# private working notes / local tooling
+CLAUDE.md
+HANDOFF.md
+.claude/
+private/
+
+# built in CI
+web/app.zip

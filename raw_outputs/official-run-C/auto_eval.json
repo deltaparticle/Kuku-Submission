@@ -1,0 +1,225 @@
+{
+  "run": "outputs/I_Married_a_Broken_Soldier_He_was_a_Duke_script/llm-run-5",
+  "rules": {
+    "promos_checked": 32,
+    "pass_rate": 1.0,
+    "failures": []
+  },
+  "rules_baseline": {
+    "promos_checked": 30,
+    "pass_rate": 1.0
+  },
+  "agreement_pipeline_vs_baseline": {
+    "promos_in_A": 30,
+    "A_found_in_B": 7,
+    "share": 0.233,
+    "episodes_A": 23,
+    "episodes_B": 29,
+    "episodes_in_both": 17
+  },
+  "agreement_run2_vs_run1": {
+    "promos_in_A": 30,
+    "A_found_in_B": 18,
+    "share": 0.6,
+    "episodes_A": 23,
+    "episodes_B": 24,
+    "episodes_in_both": 18
+  },
+  "agreement_run1_vs_run2": {
+    "promos_in_A": 30,
+    "A_found_in_B": 18,
+    "share": 0.6,
+    "episodes_A": 24,
+    "episodes_B": 23,
+    "episodes_in_both": 18
+  },
+  "blind_ab_pipeline_vs_baseline": {
+    "episodes_where_both_chose_same_moment": 8,
+    "pairs_judged": 22,
+    "pipeline": 13,
+    "baseline": 4,
+    "tie": 5,
+    "judge_consistent_in_both_orders": 17,
+    "details": [
+      {
+        "episode": 2,
+        "pipeline": "0.0-45.1",
+        "baseline": "63.5-107.8",
+        "order1": "pipeline",
+        "order2": "baseline",
+        "result": "tie"
+      },
+      {
+        "episode": 1,
+        "pipeline": "11.0-62.2",
+        "baseline": "39.1-74.7",
+        "order1": "pipeline",
+        "order2": "pipeline",
+        "result": "pipeline"
+      },
+      {
+        "episode": 11,
+        "pipeline": "16.8-51.4",
+        "baseline": "61.8-85.4",
+        "order1": "pipeline",
+        "order2": "pipeline",
+        "result": "pipeline"
+      },
+      {
+        "episode": 27,
+        "pipeline": "3.4-46.4",
+        "baseline": "72.6-131.2",
+        "order1": "baseline",
+        "order2": "pipeline",
+        "result": "tie"
+      },
+      {
+        "episode": 4,
+        "pipeline": "10.5-65.9",
+        "baseline": "113.0-151.4",
+        "order1": "baseline",
+        "order2": "baseline",
+        "result": "baseline"
+      },
+      {
+        "episode": 5,
+        "pipeline": "4.2-57.0",
+        "baseline": "86.5-110.5",
+        "order1": "pipeline",
+        "order2": "pipeline",
+        "result": "pipeline"
+      },
+      {
+        "episode": 1,
+        "pipeline": "107.5-138.0",
+        "baseline": "39.1-74.7",
+        "order1": "pipeline",
+        "order2": "baseline",
+        "result": "tie"
+      },
+      {
+        "episode": 28,
+        "pipeline": "70.5-101.2",
+        "baseline": "45.6-76.8",
+        "order1": "pipeline",
+        "order2": "pipeline",
+        "result": "pipeline"
+      },
+      {
+        "episode": 12,
+        "pipeline": "0.0-32.4",
+        "baseline": "40.1-69.6",
+        "order1": "baseline",
+        "order2": "baseline",
+        "result": "baseline"
+      },
+      {
+        "episode": 34,
+        "pipeline": "0.0-54.6",
+        "baseline": "35.3-75.9",
+        "order1": "pipeline",
+        "order2": "pipeline",
+        "result": "pipeline"
+      },
+      {
+        "episode": 21,
+        "pipeline": "3.5-48.9",
+        "baseline": "48.8-99.2",
+        "order1": "pipeline",
+        "order2": "baseline",
+        "result": "tie"
+      },
+      {
+        "episode": 25,
+        "pipeline": "18.5-62.9",
+        "baseline": "77.4-109.8",
+        "order1": "pipeline",
+        "order2": "pipeline",
+        "result": "pipeline"
+      },
+      {
+        "episode": 26,
+        "pipeline": "55.8-105.4",
+        "baseline": "56.0-79.8",
+        "order1": "pipeline",
+        "order2": "pipeline",
+        "result": "pipeline"
+      },
+      {
+        "episode": 27,
+        "pipeline": "114.8-150.5",
+        "baseline": "72.6-131.2",
+        "order1": "pipeline",
+        "order2": "pipeline",
+        "result": "pipeline"
+      },
+      {
+        "episode": 11,
+        "pipeline": "71.8-107.0",
+        "baseline": "61.8-85.4",
+        "order1": "pipeline",
+        "order2": "pipeline",
+        "result": "pipeline"
+      },
+      {
+        "episode": 29,
+        "pipeline": "56.7-78.5",
+        "baseline": "64.5-102.5",
+        "order1": "baseline",
+        "order2": "baseline",
+        "result": "baseline"
+      },
+      {
+        "episode": 19,
+        "pipeline": "41.5-84.0",
+        "baseline": "73.5-112.9",
+        "order1": "baseline",
+        "order2": "baseline",
+        "result": "baseline"
+      },
+      {
+        "episode": 34,
+        "pipeline": "142.1-184.6",
+        "baseline": "35.3-75.9",
+        "order1": "pipeline",
+        "order2": "pipeline",
+        "result": "pipeline"
+      },
+      {
+        "episode": 16,
+        "pipeline": "48.8-83.2",
+        "baseline": "23.0-47.8",
+        "order1": "baseline",
+        "order2": "pipeline",
+        "result": "tie"
+      },
+      {
+        "episode": 42,
+        "pipeline": "21.7-77.8",
+        "baseline": "15.0-40.2",
+        "order1": "pipeline",
+        "order2": "pipeline",
+        "result": "pipeline"
+      },
+      {
+        "episode": 28,
+        "pipeline": "101.2-138.5",
+        "baseline": "45.6-76.8",
+        "order1": "pipeline",
+        "order2": "pipeline",
+        "result": "pipeline"
+      },
+      {
+        "episode": 13,
+        "pipeline": "4.2-49.2",
+        "baseline": "78.5-102.9",
+        "order1": "pipeline",
+        "order2": "pipeline",
+        "result": "pipeline"
+      }
+    ]
+  },
+  "judge_models_used": {
+    "gemini-3.1-flash-lite": 6
+  }
+}

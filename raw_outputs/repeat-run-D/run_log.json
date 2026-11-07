@@ -1,0 +1,159 @@
+{
+  "mode": "llm",
+  "episodes": 50,
+  "lines": 3727,
+  "candidates_valid": 133,
+  "candidates_rejected": 42,
+  "candidates_rejected_then_repaired": 36,
+  "montages_rejected": 10,
+  "final_promos": 30,
+  "candidates_passing_quality_bar": 66,
+  "montages": 5,
+  "rank_runs_ok": 3,
+  "late_payoff_episodes": [
+    35,
+    43,
+    44,
+    45,
+    47
+  ],
+  "late_payoff_vote": {
+    "source": "majority of 3 passes (>= 2)",
+    "votes": {
+      "35": 3,
+      "36": 1,
+      "41": 1,
+      "42": 1,
+      "43": 3,
+      "44": 3,
+      "45": 3,
+      "46": 1,
+      "47": 3
+    }
+  },
+  "seconds": 438.2,
+  "llm": {
+    "total_calls": 102,
+    "cache_hits": 95,
+    "by_stage": {
+      "bible": {
+        "calls": 3,
+        "cached": 3,
+        "prompt_tokens": 16525,
+        "completion_tokens": 2304,
+        "thinking_tokens": 5165,
+        "seconds": 0.0,
+        "model": "gemini-3.8-flash",
+        "provider": "gemini",
+        "models_used": {
+          "gemini-3.8-flash": 3
+        }
+      },
+      "candidates": {
+        "calls": 84,
+        "cached": 84,
+        "prompt_tokens": 500858,
+        "completion_tokens": 38305,
+        "thinking_tokens": 0,
+        "seconds": 0.0,
+        "model": "gemini-3-flash-preview",
+        "provider": "gemini",
+        "models_used": {
+          "gemini-3-flash-preview": 84
+        }
+      },
+      "score": {
+        "calls": 10,
+        "cached": 8,
+        "prompt_tokens": 181144,
+        "completion_tokens": 58453,
+        "thinking_tokens": 111659,
+        "seconds": 124.18,
+        "model": "gemini-3.8-flash",
+        "provider": "gemini",
+        "models_used": {
+          "gemini-3.8-flash": 10
+        }
+      },
+      "rank": {
+        "calls": 3,
+        "cached": 0,
+        "prompt_tokens": 15915,
+        "completion_tokens": 4438,
+        "thinking_tokens": 13005,
+        "seconds": 120.49,
+        "model": "gemini-3.8-flash",
+        "provider": "gemini",
+        "models_used": {
+          "gemini-3.8-flash": 3
+        }
+      },
+      "montage": {
+        "calls": 2,
+        "cached": 0,
+        "prompt_tokens": 22848,
+        "completion_tokens": 3935,
+        "thinking_tokens": 20932,
+        "seconds": 147.92,
+        "model": "gemini-3.8-flash",
+        "provider": "gemini",
+        "models_used": {
+          "gemini-3.8-flash": 2
+        }
+      }
+    }
+  },
+  "stage_models": {
+    "bible": {
+      "provider": "gemini",
+      "model": "gemini-3.8-flash",
+      "temperature": 0.0,
+      "fallback_models": [
+        "gemini-3.7-flash"
+      ]
+    },
+    "candidates": {
+      "provider": "gemini",
+      "model": "gemini-3-flash-preview",
+      "temperature": 0.0,
+      "reasoning_effort": "low",
+      "fallback_models": [
+        "gemini-3.5-flash-lite"
+      ]
+    },
+    "score": {
+      "provider": "gemini",
+      "model": "gemini-3.8-flash",
+      "temperature": 0.0,
+      "fallback_models": [
+        "gemini-3.7-flash"
+      ]
+    },
+    "rank": {
+      "provider": "gemini",
+      "model": "gemini-3.8-flash",
+      "temperature": 0.0,
+      "fallback_models": [
+        "gemini-3.7-flash"
+      ]
+    },
+    "montage": {
+      "provider": "gemini",
+      "model": "gemini-3.8-flash",
+      "temperature": 0.2,
+      "fallback_models": [
+        "gemini-3.7-flash"
+      ]
+    },
+    "eval_judge": {
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite",
+      "temperature": 0.0,
+      "fallback_models": [
+        "gemini-3.5-flash-lite",
+        "gemini-3-flash-preview",
+        "gemini-3.6-flash"
+      ]
+    }
+  }
+}
