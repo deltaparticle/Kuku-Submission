@@ -93,8 +93,13 @@ def main() -> int:
     def progress(stage, i, n):
         print(f"  [{stage}] {i}/{n}", flush=True)
 
-    res = run(eps, cfg, llm=llm, use_llm=not a.no_llm, do_montage=not a.no_montage, progress=progress,
-              show=show)
+    from promofinder.llm import FatalProviderError
+    try:
+        res = run(eps, cfg, llm=llm, use_llm=not a.no_llm, do_montage=not a.no_montage, progress=progress,
+                  show=show)
+    except FatalProviderError as e:
+        print(f"\nSTOPPED: {e}", file=sys.stderr)
+        return 3
     out = write_all(res, Path(a.out) / slug / run_id, show)
     lg = res["run_log"]
     print(f"\nDone in {lg['seconds']}s: {lg['final_promos']} promos, {lg['montages']} montages, "

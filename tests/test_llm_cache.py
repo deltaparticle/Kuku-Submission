@@ -68,3 +68,25 @@ def test_dead_model_is_skipped(tmp_path):
     llm._dead["m1"] = time.time() + 3600
     llm._raw("score", MSGS, 0.0)
     assert c.calls == ["m2"]
+
+
+def test_no_credit_stops_the_run_with_a_plain_message(tmp_path):
+    import pytest
+    from promofinder.llm import FatalProviderError
+
+    class NoCredit(FakeClient):
+        def __init__(self):
+            super().__init__()
+            outer = self
+
+            class _C:
+                def create(self, **kw):
+                    outer.calls.append(kw["model"])
+                    e = RuntimeError("Your prepayment credits are depleted."); e.status_code = 402; raise e
+            self.chat = type("Chat", (), {"completions": _C()})()
+
+    c = NoCredit(); llm = make(tmp_path, c)
+    with pytest.raises(FatalProviderError, match="no credit left"):
+        llm._raw("score", MSGS, 0.0)
+    assert c.calls == ["m1"]                    # no retries, no fallback model: an account problem is not transient
+    assert not issubclass(FatalProviderError, RuntimeError)   # so the stages cannot swallow it

@@ -320,8 +320,11 @@ $("#run-btn").addEventListener("click", async () => {
     log(`Done in ${secs} s.`);
     view.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) {
-    const msg = String(e.message || e).split("\n").filter(Boolean).slice(-3).join(" ");
-    view.innerHTML = `<div class="banner err">Run failed: ${esc(msg)}</div>`;
+    const lines = String(e.message || e).split("\n").filter(Boolean);
+    const fatal = lines.filter((l) => /FatalProviderError: /.test(l)).pop();
+    const msg = fatal ? fatal.replace(/^.*FatalProviderError:\s*/, "") : lines.slice(-2).join(" ");
+    view.innerHTML = `<div class="banner err"><b>Run stopped.</b> ${esc(msg)}</div>`;
+    $("#progress-card").scrollIntoView({ behavior: "smooth", block: "start" });
     log("ERROR: " + e);
   } finally {
     clearInterval(timer);

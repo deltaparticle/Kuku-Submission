@@ -97,6 +97,19 @@ class HTTPError(Exception):
         self.status_code = status
 
 
+class FatalProviderError(Exception):
+    """Account-level problem (bad key, no credit, no access). Deliberately NOT a RuntimeError, so the stages'
+    'one bad batch must not kill the run' handlers do not swallow it: the whole run stops with this message."""
+
+
+FATAL_HINTS = {
+    401: "The provider rejected the API key (HTTP 401). Check that the key is right and belongs to the chosen provider.",
+    402: "The API key's account has no credit left (HTTP 402). Top up billing for this key (Google AI Studio -> "
+         "Billing), or use a different key. Tip: 'Instant baseline (no key)' still works.",
+    403: "The provider refused access (HTTP 403): the key may lack permission for this model or API, or be restricted.",
+}
+
+
 def run_sync(coro):
     """Run a coroutine from synchronous code (CLI, Streamlit, tests)."""
     try:
@@ -148,8 +161,8 @@ class LLM:
     def _api_key(self, prov: str, pcfg: dict) -> str:
         key = self.api_keys.get(prov) or os.environ.get(pcfg.get("api_key_env", ""), "")
         if not key:
-            raise RuntimeError(f"No API key for provider '{prov}'. Set env var {pcfg.get('api_key_env')} "
-                               f"or paste a key in the app.")
+            raise FatalProviderError(f"No API key for provider '{prov}'. Set env var {pcfg.get('api_key_env')} "
+                                     f"or paste a key in the app.")
         return key
 
     def _client(self, prov: str, pcfg: dict):
@@ -250,12 +263,15 @@ class LLM:
                                        "prompt_tokens": pt, "completion_tokens": ct, "thinking_tokens": th,
                                        "seconds": round(time.time() - t0, 2)})
                     return text
+                except FatalProviderError:
+                    raise
                 except Exception as e:  # noqa: BLE001 - we classify by status/message
                     last_err = e
                     status = getattr(e, "status_code", None)
                     msg = str(e).lower()
-                    if isinstance(e, RuntimeError) and "No API key" in str(e):
-                        raise
+                    if status in FATAL_HINTS and not (status == 403 and "model" in msg and mi < len(models) - 1):
+                        detail = re.sub(r"\s+", " ", str(e))[:300]
+                        raise FatalProviderError(f"{FATAL_HINTS[status]} Provider said: {detail}") from e
                     if status == 400 and "reasoning" in msg and "reasoning_effort" in kwargs:
                         # endpoint/model does not support reasoning_effort: drop it and retry this model once
                         kwargs.pop("reasoning_effort")
