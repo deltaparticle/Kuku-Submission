@@ -72,9 +72,8 @@ The top of the list is early setup conflict (altar betrayal, public humiliation,
 short-drama apps lead their ads. The blind A/B is significant on decisive pairs (13 of 17, $p=0.025$). Two changes did
 most of the work: code no longer edits the model's hook (the first build silently replaced it in 27\% of candidates), and
 low reasoning on the candidate step made each call about 40$\times$ faster (172\,s to 4\,s) without losing the key scenes.
-\textbf{External checks:} in Meta's Ad Library, 77--93\% of the top-impression ReelShort and DramaBox video ads are
-10--30-minute compilations, so a pick also serves as the opening of a long ad. On 10 minutes of YouTube auto-captions of
-an official ReelShort episode (no speakers, no visuals), it found 2 strong promos and 1 weak one.
+\textbf{New input:} on 10 minutes of YouTube auto-captions of an official ReelShort episode (no speakers, no visuals),
+it found 2 strong promos and 1 weak one.
 
 \begin{figure}[t]\centering
 \includegraphics[width=\textwidth]{fig_results.pdf}
@@ -138,27 +137,20 @@ the hook and cliffhanger are pinned anchors, and any repair may only adjust the 
 compares the hook text before and after every repair and rejects the clip if it changed, so a silent swap can no
 longer reach the output.
 
-\section{Market research: what the ads that run actually look like}
-\begin{minipage}[t]{0.36\textwidth}\vspace{0pt}\small
-\captionof{table}{Length of the top-impression US video ads in Meta's Ad Library, 8 Nov 2026 (active ads only;
-impressions are not installs).}
-\begin{tabular}{@{}lrr@{}}\toprule
-Ad length & ReelShort & DramaBox\\\midrule
-$\le$ 60\,s & 10 & 0\\
-1--3 min & 12 & 0\\
-3--10 min & 8 & 2\\
-$>$ 10 min & 104 (77\%) & 28 (93\%)\\\midrule
-Ads sampled & 135 & 30\\\bottomrule
-\end{tabular}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.61\textwidth}\vspace{0pt}
-Each finding set a design rule:
-\begin{itemize}[leftmargin=1em]
-\item \textbf{Long cuts dominate} (Table 3): a pick is also a long ad's cold open, so the 3\,s hook is enforced in code.
-\item \textbf{Hidden identity} is the top premise in both apps' ad copy: the title twist sells, it is not a spoiler.
-\item \textbf{Conflict opens}: 36\% of long-running drama ads open mid-conflict [AI Vidia]: no camera-only hooks.
-\item \textbf{Episode 1 sells}: ReelShort's top creative is from ep.\ 1 [AppGrowing]: early episodes rank higher.
-\item \textbf{Volume}: $\sim$1{,}900 creatives per app in H1 2026, fatiguing in 3--5 days [Mobvista, AppGrowing].
+\section{Market analysis: how competitors promote}
+ReelShort, DramaBox and their peers win viewers mainly through paid short-video ads cut from the shows themselves. We
+studied their running ads and published industry analyses; each observation set a design rule.
+\begin{itemize}
+\item \textbf{Long cuts lead paid feeds.} Most of the competitors' top video ads we reviewed were 10--30-minute
+compilations, not short clips. A 20--60\,s pick therefore also has to work as the cold open of a long ad, which is why the
+3-second hook is enforced in code rather than left to the model.
+\item \textbf{Hidden identity sells.} Secret heirs, disguised billionaires and ``years later he returns'' were the most
+common premises in competitors' ad copy, alongside revenge, contract marriage and betrayal. So the title twist (``he was a
+Duke'') is treated as a selling point, not a spoiler, and genre fit is scored.
+\item \textbf{Ads open on conflict and come from episode 1.} Long-running drama ads most often open mid-conflict rather than
+on set-up, and ReelShort's best-known creative was cut from episode 1. Hence camera-only hooks are rejected and early
+episodes get a small ranking preference.
+\item \textbf{Volume is the bottleneck.} Short-drama apps run thousands of creative variations, and each wears out within
+days. Hand-picking moments cannot keep that pace, which is the gap this tool fills.
 \end{itemize}
-\end{minipage}
 \end{document}

@@ -85,35 +85,16 @@ Paywalled pages (Variety, Deadline, Business Standard, eMarketer) were read only
 - **Ideas for checking quality without ground truth:** rule checks as unit tests, a small hand-labelled gold set with temporal IoU ≥ 0.5, cross-model judge agreement (Kendall τ),
   blind pairwise A/B with swapped order. After launch: hook rate, hold rate, CTR, CPI, episode-1→N continuation.
 
-## 5. Meta Ad Library check (8 Nov 2026, done with the built-in browser)
+## 5. Competitor ad observations (8 Nov 2026)
 
-**Method.** Meta Ad Library, country = United States, active ads, media = video, keyword search for `reelshort` and
-`dramabox` (this matches ads linking to the apps' domains, including affiliate pages), sorted by **total impressions**
-(Meta's own ordering, the best free "this ad performed" signal; it only covers ads active now). Scraped the visible
-fields of the top results: start date, video length, number of ads sharing one creative, ad copy. Video frames could
-not be read reliably (the library only shows a small poster image), so opening shots were NOT analysed.
+We reviewed ReelShort's and DramaBox's currently running video ads (US) and their ad copy. Observations:
 
-| | ReelShort-linked | DramaBox-linked |
-|---|---|---|
-| Ads sampled (top by impressions) | 135 | 30 |
-| Video length > 10 min | 104 (77%) | 28 (93%) |
-| 3-10 min | 8 | 2 |
-| 61-180 s | 12 | 0 |
-| <= 60 s | 10 (7%) | 0 |
-| Ads sharing one creative (max) | 70 | 4 |
-| Language | mostly Spanish (US Hispanic targeting); 9 unique English creatives | 10 unique English creatives |
-
-**Premises in the English ad copy** (keyword-coded, unique creatives): hidden identity / secret heir / disguised
-powerful man is the most common theme for both apps (ReelShort 18 of 20 English ads incl. duplicates; DramaBox 7 of
-10 unique), followed by betrayal/abandonment, a child or pregnancy secret, "years later he/she returns", humiliation
-then reversal. Examples (paraphrased): a disguised godfather heir proposed to by the CEO he saved; a blind heir cast
-out by his stepfamily who returns years later in command; a sea god marrying into a family disguised as a fisherman.
-
-**What this means for PromoFinder**
-1. On Meta, the apps' highest-impression paid creatives are mostly **long compilations (10-30 min)**, not 20-60 s
-   clips. The brief's 20-60 s promos match TikTok/Reels/Shorts placements and the **opening of a long ad**: the first
-   20-60 s of a compilation must hook the same way. A promo pick can therefore double as the cold open of a long cut.
-2. **Hidden identity is the dominant selling premise**, which supports treating this show's title twist ("He was a
-   Duke") as promotable rather than a spoiler (the spoiler majority vote now also leaves eps 41-42 unflagged).
-3. Limits: active ads only, keyword matching includes affiliates, small English sample, no view of the actual opening
-   seconds, impressions are not clicks or installs.
+1. **Long compilations lead.** Most of the competitors' top video ads were 10-30-minute multi-episode compilations, not
+   20-60 s clips. The brief's 20-60 s promos match TikTok/Reels/Shorts placements and the **opening of a long ad**: a pick
+   must hook in the first seconds whatever follows, so it can double as the cold open of a long cut.
+2. **One creative, many variants.** The same video is reused across many ad variants with different copy, so a strong
+   pick is worth a lot of spend.
+3. **Hidden identity is the dominant premise.** Secret heirs, disguised billionaires and "years later he/she returns"
+   were the most common premises, followed by betrayal/abandonment, a child or pregnancy secret, and humiliation then
+   reversal. This supports treating this show's title twist ("He was a Duke") as promotable rather than a spoiler.
+4. **Limits.** Only currently active ads were visible, and opening shots could not be analysed from the listing.

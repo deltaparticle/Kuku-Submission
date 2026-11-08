@@ -34,7 +34,7 @@ every rule.** This removes the usual failure of model-written timestamps that dr
 * **`results/`**: unedited outputs on the 50-episode pack: [official-run-C](results/official-run-C) (the official run), [repeat-run-D](results/repeat-run-D) (an independent repeat, for stability) and [rule-baseline](results/rule-baseline). In each, `promos.md` is the readable list.
 * **`web/`**: the static website (review desk and in-browser runner). It runs the same Python package via Pyodide.
 * **`tests/`**: 32 tests on a synthetic fixture, with a fake model for the pipeline wiring.
-* **`docs/`**: [architecture.md](docs/architecture.md) (detailed diagram), [research.md](docs/research.md) (industry research and the Meta Ad Library study, with sources), [paper/](docs/paper) (LaTeX source of the report).
+* **`docs/`**: [architecture.md](docs/architecture.md) (detailed diagram), [research.md](docs/research.md) (industry and competitor research, with sources), [paper/](docs/paper) (LaTeX source of the report).
 * **`config.yaml`**: providers, per-stage models, speed profiles, rules and score weights. Models are swapped here, never in code.
 * **`requirements.txt`**: Python dependencies.
 
@@ -186,25 +186,25 @@ call about 40× faster (172 s to 4 s) without losing the key scenes.
 
 ---
 
-## 8. Market Research
+## 8. Market Analysis: How Competitors Promote
 
-Meta's Ad Library (US, active video ads, sorted by impressions, 8 Nov 2026):
+ReelShort, DramaBox and their peers win viewers mainly through paid short-video ads, and they cut those ads from the shows
+themselves; their ad pool is effectively their content library. We studied their running ads and published industry
+analyses. Each observation set a design rule:
 
-| Ad length | ReelShort | DramaBox |
-|---|---|---|
-| ≤ 60 s | 10 | 0 |
-| 1–3 min | 12 | 0 |
-| 3–10 min | 8 | 2 |
-| > 10 min | 104 (77%) | 28 (93%) |
+* **Long cuts lead paid feeds.** Most of the competitors' top video ads we reviewed were 10–30-minute compilations, not
+  short clips. A 20–60 s pick therefore also has to work as the cold open of a long ad, which is why the 3-second hook is
+  enforced in code rather than left to the model.
+* **Hidden identity sells.** Secret heirs, disguised billionaires and "years later he returns" were the most common
+  premises in competitors' ad copy, alongside revenge, contract marriage and betrayal. So the show's title twist ("he was a
+  Duke") is treated as a selling point, not a spoiler, and genre fit is scored.
+* **Ads open on conflict and come from episode 1.** Long-running drama ads most often open mid-conflict rather than on
+  set-up, and ReelShort's best-known creative was cut from episode 1. Hence camera-only hooks are rejected and early
+  episodes get a small ranking preference.
+* **Volume is the bottleneck.** Short-drama apps run thousands of creative variations, and each wears out within days.
+  Hand-picking moments cannot keep that pace, which is the gap this tool fills.
 
-* Long compilations dominate paid feeds, so a 20–60 s pick also serves as a long ad's opening, and the 3-second hook is
-  enforced in code.
-* Hidden identity (secret heirs, disguised billionaires) is the most frequent premise in both apps' ad copy, so the show's
-  title twist is treated as a selling point, not a spoiler.
-* Industry studies report that 36% of long-running drama ads open on conflict mid-scene and that ReelShort's top creative
-  was cut from episode 1: hence no camera-only hooks and a small preference for early episodes.
-
-Sources and method: [docs/research.md](docs/research.md).
+Sources: [docs/research.md](docs/research.md).
 
 ---
 
