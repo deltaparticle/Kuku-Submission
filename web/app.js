@@ -18,6 +18,7 @@ const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const pad = (n) => String(n).padStart(2, "0");
 const toSec = (ts) => { const [m, s] = String(ts).split(":"); return (+m) * 60 + (+s); };
 const tc = (sec) => `${pad(Math.floor(sec / 60))}:${(sec % 60).toFixed(2).padStart(5, "0")}`;
+const short = (sec) => `${Math.floor(sec / 60)}:${pad(Math.floor(sec % 60))}`;
 
 /* ---------------- views ---------------- */
 const VIEWS = ["home", "review", "run", "method"];
@@ -61,10 +62,10 @@ function heroSample(data) {
   const s = p.segments[0], e = p.segments[p.segments.length - 1];
   const D = (data.episode_durations || {})[s.episode] || (data.episode_durations || {})[String(s.episode)] || s.end;
   $("#hs-rank").textContent = "#" + p.rank;
-  $("#hs-where").textContent = `E${pad(s.episode)} · ${s.start_ts} → ${e.end_ts} · ${Math.round(p.duration)} s`;
-  $("#hs-hook").textContent = "“" + lineText(p.hook) + "”";
-  $("#hs-ends").textContent = "“" + lineText(p.cliffhanger) + "”";
-  $("#hs-q").textContent = p.open_question ? "leaves you asking: " + p.open_question : "";
+  $("#hs-where").textContent = `Episode ${s.episode} · ${short(s.start)}–${short(e.end)} · ${Math.round(p.duration)} s`;
+  $("#hs-hook").textContent = lineText(p.hook);
+  $("#hs-ends").textContent = lineText(p.cliffhanger);
+  $("#hs-q").textContent = p.open_question ? "Leaves you asking: " + p.open_question : "";
   const bar = $("#hs-bar");
   bar.style.left = (100 * s.start) / D + "%";
   requestAnimationFrame(() => { bar.style.width = (100 * (e.end - s.start)) / D + "%"; });
@@ -133,9 +134,9 @@ function drawList() {
     const w = warns(p);
     return `<li class="row ${p.pid === S.sel ? "sel" : ""} ${d}" data-pid="${p.pid}">
       <span class="rk">${isM ? "M" : ""}${p.rank}</span>
-      <div><div class="tc"><span class="ep">E${pad(s0.episode)}</span> ${s0.start_ts} → ${p.segments[p.segments.length - 1].end_ts}${isM ? ` · ${p.segments.length} parts` : ""}</div>
-        <div class="line1">${esc(lineText(p.hook))}</div></div>
-      <div class="side"><span class="score">${Math.round(p.duration)}s</span>${w ? `<span class="warn">!</span> ` : ""}<span class="state ${d}"></span></div>
+      <div><div class="line1">${esc(lineText(p.hook))}</div>
+        <div class="tc"><span class="ep">Ep ${s0.episode}</span> · ${short(s0.start)}–${short(p.segments[p.segments.length - 1].end)}${isM ? ` · ${p.segments.length} parts` : ""}${w ? ` · <span class="warn">flagged</span>` : ""}</div></div>
+      <div class="side"><span class="score">${Math.round(p.duration)}s</span><span class="state ${d}"></span></div>
     </li>`;
   }).join("") || `<li class="none">Nothing matches that. Try fewer words, or clear the search.</li>`;
   $$(".row", ol).forEach((li) => li.addEventListener("click", () => {
@@ -177,66 +178,58 @@ function select(pid) {
 function drawDetail(p) {
   const isM = p.kind === "montage";
   const ex = parseExcerpt(p.excerpt);
-  const timeOf = (id) => { const l = ex.find((x) => x.id === id); return l ? toSec(l.t) : null; };
   const f = p.flags || {}, att = p.attention || {};
-  const flags = [];
-  if (f.spoiler_risk) flags.push(`<span class="flag bad">Spoiler episode</span>`);
-  else if (f.judge_spoiler) flags.push(`<span class="flag muted" title="The judge thought this spoils the show; the per-show spoiler vote disagreed, so it is not penalised">Judge flagged a possible spoiler</span>`);
-  if (f.ad_policy_risk) flags.push(`<span class="flag bad">Ad-policy risk</span>`);
-  if (f.needs_context) flags.push(`<span class="flag">Needs context</span>`);
-  (att.flags || []).forEach((w) => flags.push(`<span class="flag">${esc(w[0].toUpperCase() + w.slice(1))}</span>`));
-  if (p.source === "heuristic") flags.push(`<span class="flag muted">Rule-based pick</span>`);
+  const risks = [];
+  if (f.spoiler_risk) risks.push("comes from a spoiler episode");
+  if (f.ad_policy_risk) risks.push("may break ad policy");
+  if (f.needs_context) risks.push("may need context to follow");
+  const where = p.segments.map((s) => `Episode ${s.episode}, ${short(s.start)}–${short(s.end)}`).join(" + ");
 
-  // timeline track(s)
+  // where the cut sits in its episode: one thin bar per part
   const durs = S.data.episode_durations || {};
-  const hookT = timeOf(p.hook_line_id), cutT = timeOf(p.cliffhanger_line_id);
   const track = p.segments.map((s, i) => {
     const D = durs[s.episode] || durs[String(s.episode)] || Math.max(s.end, 1);
     const L = (x) => Math.max(0, Math.min(100, (100 * x) / D));
-    let marks = "";
-    const side = (x) => (L(x) < 8 ? " l" : L(x) > 92 ? " r" : "");
-    if (i === 0 && hookT != null) marks += `<span class="track-mark${side(hookT)}" style="left:${L(hookT)}%">HOOK ${tc(hookT)}</span>`;
-    if (i === p.segments.length - 1 && cutT != null) marks += `<span class="track-mark cut${side(cutT)}" style="left:${L(cutT)}%">CLIFF ${tc(cutT)}</span>`;
-    return `<div class="track-seg"><div class="track-label"><span>Episode ${s.episode}${isM ? ` · part ${i + 1}` : ""}</span><span>00:00.00 — ${tc(D)}</span></div>
-      <div class="track-bar"><span class="track-in" style="left:${L(s.start)}%;width:${Math.max(.6, L(s.end) - L(s.start))}%"></span>${marks}</div></div>`;
+    return `<div class="track-seg"><div class="track-bar"><span class="track-in" style="left:${L(s.start)}%;width:${Math.max(.8, L(s.end) - L(s.start))}%"></span></div>
+      <div class="track-cap"><span>${isM ? `Part ${i + 1}, episode ${s.episode}: ` : ""}${short(s.start)}–${short(s.end)}</span><span>episode runs ${short(D)}</span></div></div>`;
   }).join("");
 
-  // script
+  // the script, as a screenplay page; the hook and the cliffhanger are marked in the margin
   const script = ex.map((l) => {
     if (l.brk) return `<div class="sl seg-break">${esc(l.brk)}</div>`;
-    if (!l.id) return `<div class="sl"><span></span><span></span><span>${esc(l.text)}</span></div>`;
+    if (!l.id) return `<div class="sl"><span></span><span>${esc(l.text)}</span></div>`;
     const isAct = /^\[(action|sfx|camera)\]/i.test(l.raw);
-    const cls = [l.id === p.hook_line_id ? "hook" : "", l.id === p.cliffhanger_line_id ? "cut" : "", isAct ? "act" : ""].join(" ");
-    const tag = l.id === p.hook_line_id ? "HOOK" : l.id === p.cliffhanger_line_id ? "CLIFF" : "";
-    const who = speaker(l.raw);
-    return `<div class="sl ${cls}"><span class="t">${esc(l.t)}</span><span class="tag">${tag}</span><span>${isAct ? esc(lineText(l.raw)) : `<span class="who">${esc(who)}</span>${esc(lineText(l.raw))}`}</span></div>`;
+    const hook = l.id === p.hook_line_id, cut = l.id === p.cliffhanger_line_id;
+    const cls = [hook ? "hook" : "", cut ? "cut" : "", isAct ? "act" : ""].join(" ");
+    const tag = hook ? "Hook" : cut ? "Cliffhanger" : "";
+    return `<div class="sl ${cls}"><span class="t">${short(toSec(l.t))}</span><span>${tag ? `<span class="tag">${tag}</span>` : ""}${
+      isAct ? esc(lineText(l.raw)) : `<span class="who">${esc(speaker(l.raw))}</span>${esc(lineText(l.raw))}`}</span></div>`;
   }).join("");
 
   const scoreRows = SCORE_NAMES.filter(([k]) => p.scores && p.scores[k] != null).map(([k, n]) =>
     `<tr><td>${n}</td><td><div class="meter"><i style="width:${(p.scores[k] / 5) * 100}%"></i></div></td><td class="v">${(+p.scores[k]).toFixed(1)}</td></tr>`).join("");
   const attRows = att.hook_attention != null ? `
     <tr><td title="How soon someone speaks, motion, close-ups and sound in the first 3 s, read from the screenplay">Attention, first 3 s</td><td><div class="meter"><i style="width:${att.hook_attention * 100}%"></i></div></td><td class="v">${att.hook_attention.toFixed(2)}</td></tr>
-    <tr><td title="Dead air, cutting pace, share of time with speech, ending beat">Hold</td><td><div class="meter"><i style="width:${att.hold * 100}%"></i></div></td><td class="v">${att.hold.toFixed(2)}</td></tr>` : "";
+    <tr><td title="Dead air, cutting pace, share of time with speech, ending beat">Holds attention</td><td><div class="meter"><i style="width:${att.hold * 100}%"></i></div></td><td class="v">${att.hold.toFixed(2)}</td></tr>` : "";
+  const fine = [];
+  if ((att.flags || []).length) fine.push(`The text check noticed: ${esc(att.flags.join(", "))}.`);
+  if (!f.spoiler_risk && f.judge_spoiler) fine.push("The judge thought this might spoil the show; the spoiler vote disagreed, so it isn't penalised.");
+  if (p.source === "heuristic") fine.push("Picked by the keyword rules, not the model.");
 
   $("#detail").innerHTML = `
-    <div class="d-top"><span class="d-rank">${isM ? "Montage " : "#"}${p.rank}</span><h1 class="d-title">${esc(lineText(p.hook))}</h1></div>
-    <div class="d-sub">${esc(segText(p))}<span class="sep">·</span>${Math.round(p.duration)} s<span class="sep">·</span>score ${p.final.toFixed(2)}</div>
-    ${flags.length ? `<div class="flags">${flags.join("")}</div>` : ""}
+    <p class="d-eyebrow"><b>${isM ? "Montage " : "#"}${p.rank}</b> · ${esc(where)} · ${Math.round(p.duration)} seconds</p>
+    <h1 class="d-title">${esc(lineText(p.hook))}</h1>
+    ${p.open_question ? `<p class="d-q">Leaves the viewer asking: ${esc(p.open_question)}</p>` : ""}
+    ${risks.length ? `<p class="d-warn">This clip ${risks.join(" and ")}.</p>` : ""}
     <div class="track">${track}</div>
-    <div class="d-grid">
-      <div>
-        <h3 class="sec-h">Ends on</h3>
-        <p class="pull">${esc(lineText(p.cliffhanger))}</p>
-        <div class="who">${esc(speaker(p.cliffhanger))}${p.open_question ? ` — leaves the viewer asking: ${esc(p.open_question)}` : ""}</div>
-        <h3 class="sec-h" style="margin-top:22px">Script</h3>
-        <div class="script">${script}</div>
-      </div>
-      <div class="notes">
-        ${p.why ? `<h3 class="sec-h">Why it works</h3><p>${esc(p.why)}</p>` : ""}
-        ${p.rank_reason ? `<h3 class="sec-h">Why this rank</h3><p>${esc(p.rank_reason)}</p>` : ""}
-        ${scoreRows || attRows ? `<h3 class="sec-h">Scores</h3><table class="scores">${scoreRows}${attRows}</table>` : ""}
-        ${p.score_note && p.score_note !== "none" ? `<h3 class="sec-h">Judge's main doubt</h3><p>${esc(p.score_note)}</p>` : ""}
-      </div>
+    <div class="d-body">
+      <div class="script">${script}</div>
+      <aside class="d-notes">
+        ${p.why || p.rank_reason ? `<h3>Why it's here</h3>${p.why ? `<p>${esc(p.why)}</p>` : ""}${p.rank_reason ? `<p>${esc(p.rank_reason)}</p>` : ""}` : ""}
+        ${scoreRows || attRows ? `<h3>Scores</h3><table class="scores">${scoreRows}${attRows}</table>` : ""}
+        ${fine.map((t) => `<p class="fine">${t}</p>`).join("")}
+        ${p.score_note && p.score_note !== "none" ? `<h3>The judge's doubt</h3><p>${esc(p.score_note)}</p>` : ""}
+      </aside>
     </div>`;
   toDetailTop();
 }
@@ -248,10 +241,10 @@ function toDetailTop() {   // a new clip starts at its title; the list keeps its
 }
 function drawRejected() {
   const rej = S.data.rejected || [];
-  $("#detail").innerHTML = `<h1 class="d-title" style="margin-bottom:6px">Rejected by the code checks</h1>
-    <p class="d-sub" style="margin-bottom:18px">${rej.length} proposals failed a hard rule. Most were sent back to the model with the lines that would fix them.</p>
-    <table class="table"><tr><th>Episode</th><th>Lines</th><th>Reason</th></tr>${rej.map((r) =>
-      `<tr><td class="mono">${esc(r.episode ?? "—")}</td><td class="mono">${esc((r.start_line || "") + (r.end_line ? " – " + r.end_line : ""))}</td><td>${esc(r.reason)}${r.repaired ? " <span style='color:var(--ink-3)'>(repair tried)</span>" : ""}</td></tr>`).join("")}</table>`;
+  $("#detail").innerHTML = `<h1 class="d-title">Rejected by the code checks</h1>
+    <p class="d-q">${rej.length} proposals broke a hard rule. Most went back to the model with the lines that would fix them.</p>
+    <table class="table" style="margin-top:24px"><tr><th>Episode</th><th>Lines</th><th>Reason</th></tr>${rej.map((r) =>
+      `<tr><td class="mono">${esc(r.episode ?? "—")}</td><td class="mono">${esc((r.start_line || "") + (r.end_line ? " – " + r.end_line : ""))}</td><td>${esc(r.reason)}${r.repaired ? " (repair tried)" : ""}</td></tr>`).join("")}</table>`;
 }
 
 /* ---------------- approve / reject ---------------- */

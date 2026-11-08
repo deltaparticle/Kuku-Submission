@@ -7,8 +7,8 @@
   <meta name="description" content="Reads a microdrama screenplay and hands you ranked 20–60 second promos: a hook in the first three seconds, a cliffhanger at the cut, clear to a stranger.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Gloock&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=9">
+  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Gloock&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
@@ -32,7 +32,7 @@
 <section class="view" id="view-home">
   <div class="hero">
     <div class="hero-copy">
-      <p class="kicker">for microdrama promo editors</p>
+      <p class="eyebrow">For microdrama promo editors</p>
       <h1>Find the 30 seconds that <span class="scribble">stop a scroll<svg viewBox="0 0 300 18" preserveAspectRatio="none" aria-hidden="true"><path d="M3 12 C 60 4, 110 16, 160 9 S 250 4, 297 10"/></svg></span>.</h1>
       <p class="lede">SnipDeck reads a show's screenplay and hands you a ranked list of 20–60 second promos. Each one opens
         on a hook in the first three seconds, cuts on a cliffhanger, and makes sense to someone who has never seen the show.</p>
@@ -43,15 +43,13 @@
     </div>
     <aside class="hero-sample" aria-label="The top pick">
       <div class="sample-frame">
-        <p class="sample-meta"><span class="acc" id="hs-rank">#1</span> <span id="hs-where">loading…</span></p>
-        <p class="sample-label">opens on</p>
-        <p class="sample-hook" id="hs-hook">&nbsp;</p>
+        <p class="sample-meta"><span id="hs-rank">#1</span><span id="hs-where">loading…</span></p>
+        <p class="sample-line"><span class="sample-cue">opens</span><span id="hs-hook">&nbsp;</span></p>
         <div class="sample-track" aria-hidden="true"><i id="hs-bar"></i></div>
-        <p class="sample-label">cuts on</p>
-        <p class="sample-ends" id="hs-ends">&nbsp;</p>
+        <p class="sample-line"><span class="sample-cue">cuts</span><span id="hs-ends">&nbsp;</span></p>
         <p class="sample-q" id="hs-q"></p>
       </div>
-      <p class="margin-note">↑ the #1 pick from a 50-episode show. The model chose the lines; code set the timestamps.</p>
+      <p class="margin-note">The #1 pick from a 50-episode show. The model chose the lines; code set the timestamps.</p>
     </aside>
   </div>
 
@@ -70,12 +68,12 @@
 
   <div class="band found">
     <h2>What it found on a 50-episode show</h2>
-    <div class="stats">
-      <div class="stat big"><b>32 / 32</b><span>picks pass every hard rule when re-checked from the saved output</span></div>
-      <div class="stat"><b>13 to 4</b><span>a blind judge preferred SnipDeck's picks over keyword rules (5 ties)</span></div>
-      <div class="stat low"><b>4 of 5</b><span>top picks matched by a completely separate re-run</span></div>
-      <div class="stat"><b>2 min 45 s</b><span>to read and rank all 50 episodes on the fast setting</span></div>
-    </div>
+    <dl class="stats">
+      <div class="stat big"><dt>32 / 32</dt><dd>picks pass every hard rule when re-checked from the saved output</dd></div>
+      <div class="stat"><dt>13 to 4</dt><dd>a blind judge preferred SnipDeck's picks over keyword rules, with 5 ties</dd></div>
+      <div class="stat"><dt>4 of 5</dt><dd>top picks matched by a completely separate re-run</dd></div>
+      <div class="stat"><dt>2 min 45 s</dt><dd>to read and rank all 50 episodes on the fast setting</dd></div>
+    </dl>
     <p class="honest">Where it still trips: some clips end on a quiet line instead of a question, and visual hooks are judged
       from text. No human editor has scored the picks yet, so treat the ranking as a strong first draft.
       <a href="#method" data-view="method">Read the method</a></p>
@@ -86,12 +84,12 @@
 <section class="view" id="view-review">
   <div class="desk-head">
     <div class="desk-id">
-      <p class="kicker" id="run-title"></p>
       <h1 class="desk-title" id="show-title">Loading the picks…</h1>
+      <p class="run-tag" id="run-title"></p>
       <p class="meta" id="run-meta"></p>
     </div>
     <div class="export" id="export">
-      <button class="btn btn-ghost" id="export-btn" aria-haspopup="true">Download ▾</button>
+      <button class="btn btn-ghost" id="export-btn" aria-haspopup="true">Download</button>
       <div class="menu" id="export-menu" hidden>
         <button data-dl="md">promos.md</button>
         <button data-dl="csv">promos.csv</button>
@@ -139,17 +137,16 @@
 <section class="view" id="view-run">
   <div class="page run-page">
     <div class="run-intro">
-      <p class="kicker">try it yourself</p>
       <h1>Run it on a show</h1>
       <p class="lede">Everything happens in this tab. Your episodes are read here, and model calls go straight from your
         browser to the provider you pick, with your key. Nothing passes through us.</p>
-      <p class="margin-note">No key? Pick “Rules only”. It runs the keyword baseline in about 8 seconds, so you can see the
+      <p class="side-note">No key? Pick “Rules only”. It runs the keyword baseline in about 8 seconds, so you can see the
         desk with your own show.</p>
     </div>
 
     <form class="run-form" id="run-form" onsubmit="return false">
-      <fieldset>
-        <legend><span>1</span> Your episodes</legend>
+      <section class="step-block">
+        <h2><span>1</span>Your episodes</h2>
         <label class="drop" id="drop">
           <input type="file" id="files" accept=".zip,.txt,.srt,.vtt" multiple hidden>
           <span>Drop a <b>.zip</b> of screenplays, some <b>.txt</b> files, or one <b>.srt / .vtt</b> subtitle file</span>
@@ -157,10 +154,10 @@
         </label>
         <p class="or-line">No files handy? <button type="button" class="link-quiet" id="use-sample">Load the 50-episode sample show</button></p>
         <p class="status-line" id="loaded">Nothing loaded yet.</p>
-      </fieldset>
+      </section>
 
-      <fieldset>
-        <legend><span>2</span> The engine</legend>
+      <section class="step-block">
+        <h2><span>2</span>The engine</h2>
         <div class="seg" id="mode" role="group" aria-label="Mode">
           <button type="button" data-mode="ai" class="on">AI pipeline</button>
           <button type="button" data-mode="baseline">Rules only, no key</button>
@@ -184,7 +181,7 @@
           <div class="field"><input id="judge-model" spellcheck="false" placeholder=" "><label for="judge-model">Model that judges them</label></div>
           <label class="check wide"><input type="checkbox" id="montage" checked> Also try joining 2–3 moments into montages</label>
         </div>
-      </fieldset>
+      </section>
 
       <div class="run-go">
         <button class="btn btn-primary big" id="run-btn" disabled>Find the promos</button>
@@ -204,16 +201,15 @@
 <!-- ================= METHOD ================= -->
 <section class="view" id="view-method">
   <article class="page prose">
-    <p class="kicker">method</p>
     <h1>The model names lines. Code does the cutting.</h1>
     <p class="lede">An editor today watches every episode to find the half-minute that makes a stranger stop scrolling.
       SnipDeck reads the timestamped screenplay instead, proposes those cuts, and ranks them by what to post first.</p>
 
-    <h2><span class="scribble-s">What a promo has to be<svg viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true"><path d="M2 8 C 80 2, 160 11, 298 5"/></svg></span></h2>
+    <h2>What a promo has to be</h2>
     <p>20 to 60 seconds. A hook inside the first three seconds. An unresolved moment at the cut. Clear to someone who has
       never seen the show. It can be one stretch, or two or three moments joined in story order.</p>
 
-    <h2><span class="scribble-s">How it works<svg viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true"><path d="M2 8 C 80 2, 160 11, 298 5"/></svg></span></h2>
+    <h2>How it works</h2>
     <p><b>Parse.</b> Every screenplay block becomes a line with an ID like <code>E07_L042</code>, a type and its start and end
       time. A cut is only allowed where no one is speaking and no sound effect is playing.</p>
     <p><b>Story bible.</b> One model call reads the episode summaries: who is who, which twists sell the show, which
@@ -228,14 +224,14 @@
     <p class="aside">The ranking weights were set by hand, re-reading the picks after each run. They were tuned on Gemini
       models, so a different model may want different values. They all live in <code>config.yaml</code>.</p>
 
-    <h2><span class="scribble-s">Who does what<svg viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true"><path d="M2 8 C 80 2, 160 11, 298 5"/></svg></span></h2>
+    <h2>Who does what</h2>
     <dl class="roles">
       <dt>The model</dt><dd>reads the story, proposes moments, judges hooks and cliffhangers, ranks.</dd>
       <dt>The code</dt><dd>owns every timestamp, the 20–60 s limit, the 3-second hook, safe cuts, no overlaps, two per episode.</dd>
       <dt>The editor</dt><dd>approves or rejects each pick in the review desk and downloads the list.</dd>
     </dl>
 
-    <h2><span class="scribble-s">What the checks show, and what they don't<svg viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true"><path d="M2 8 C 80 2, 160 11, 298 5"/></svg></span></h2>
+    <h2>What the checks show, and what they don't</h2>
     <p>On the 50-episode sample, all 32 picks pass the hard rules when re-checked from the saved output. A judge shown both
       clips blind preferred SnipDeck over keyword rules 13 times, the rules 4 times, with 5 ties. A separate re-run chose the
       same scene for 4 of the top 5.</p>
@@ -243,7 +239,7 @@
       same model family, visual hooks are read from text, and screenplay times are assumed to match the video. The real test
       is a split test on hook rate, hold rate and click-through.</p>
 
-    <h2><span class="scribble-s">Swap the model<svg viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true"><path d="M2 8 C 80 2, 160 11, 298 5"/></svg></span></h2>
+    <h2>Swap the model</h2>
     <p>Any OpenAI-compatible endpoint works: Gemini, OpenAI, OpenRouter, Groq, or a company gateway. Pick one under
       <a href="#run" data-view="run">Run</a>, or edit <code>config.yaml</code> for the command-line tool.</p>
   </article>
@@ -264,10 +260,10 @@
       <a href="https://github.com/deltaparticle/Kuku-Assignment/blob/main/SnipDeck.pdf" target="_blank" rel="noopener">The 2-page report ↗</a>
       <a href="https://github.com/deltaparticle/Kuku-Assignment" target="_blank" rel="noopener">Code on GitHub ↗</a>
     </nav>
-    <p class="foot-time"><span class="dot" aria-hidden="true"></span><span id="clock">India</span></p>
+    <p class="foot-time" id="clock">India</p>
   </div>
 </footer>
 
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>
