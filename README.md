@@ -4,7 +4,7 @@
 cliffhanger at the cut, and a clip that makes sense to someone who has never seen the show.
 Built for the Kuku AI Generalist Assignment (Problem 1, "Find the Promos").
 
-**Live app: https://deltaparticle.github.io/Kuku-Assignment/**: official results, plus *Run on your episodes*
+**Live app: https://deltaparticle.github.io/Kuku-Assignment/**: a review desk with the official results, plus *Run*
 (upload a zip, paste a key, get ranked promos in ~3 minutes for 50 episodes, entirely in your browser).
 
 ## The one idea
@@ -38,7 +38,7 @@ Top picks: the altar rejection (ep 2, "I cannot marry you, Juliana."), "Guards! 
 (ep 3), the betrayal reveal (ep 1), the stolen-watch frame-up (ep 11), "I want to see you crawl, sister" (ep 12).
 
 ## Run it
-**In the browser:** open the live app → *Run on your episodes* → drop a zip of episode `.txt` files (or use the
+**In the browser:** open the live app → *Run* → drop a zip of episode `.txt` files (or use the
 sample show) → paste a key → *Find promos*. No key? Choose *Instant baseline*.
 
 **Command line:**

@@ -1,206 +1,285 @@
-/* PromoFinder web app.
- * Official results render instantly from data/official.json (no Python needed).
- * "Run on your episodes" loads Pyodide (Python in WebAssembly) and runs the unchanged pipeline from app.zip;
- * model calls go from this browser straight to the chosen provider with the visitor's key.
+/* PromoFinder — review desk.
+ * Review: official results from data/official.json (no Python needed), or the results of a run done in this tab.
+ * Run: loads Pyodide (Python in WebAssembly) and the unchanged pipeline from app.zip; model calls go from this browser
+ * straight to the chosen provider with the visitor's key.
  */
 const PYODIDE_URL = "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/";
 const DEFAULTS = {
   gemini: { bulk: "gemini-3-flash-preview", judge: "gemini-3.8-flash" },
-  openai: { bulk: "", judge: "" }, openrouter: { bulk: "", judge: "" }, groq: { bulk: "", judge: "" },
-  custom: { bulk: "", judge: "" },
+  openai: { bulk: "", judge: "" }, openrouter: { bulk: "", judge: "" }, groq: { bulk: "", judge: "" }, custom: { bulk: "", judge: "" },
 };
-const STAGES = [
-  ["bible", "Story bible + spoiler vote"], ["candidates", "Candidate clips (1 call / episode)"],
-  ["score", "Rubric scoring"], ["rank", "Listwise ranking (3 shuffled runs)"], ["montage", "Montages"],
-];
+const STAGES = [["bible", "Story bible"], ["candidates", "Candidate clips"], ["score", "Scoring"], ["rank", "Ranking"], ["montage", "Montages"]];
+const SCORE_NAMES = [["hook_3s", "Hook, first 3 s"], ["cliffhanger", "Cliffhanger"], ["standalone", "Makes sense alone"],
+  ["intensity", "Intensity"], ["plot_relevance", "Plot relevance"], ["trope_fit", "Genre fit"]];
+
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pad = (n) => String(n).padStart(2, "0");
+const toSec = (ts) => { const [m, s] = String(ts).split(":"); return (+m) * 60 + (+s); };
+const tc = (sec) => `${pad(Math.floor(sec / 60))}:${(sec % 60).toFixed(2).padStart(5, "0")}`;
 
-/* ---------------- tabs ---------------- */
-$$(".tab").forEach((b) => b.addEventListener("click", () => {
-  $$(".tab").forEach((x) => x.classList.toggle("active", x === b));
-  $$(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + b.dataset.tab));
-  if (b.dataset.tab === "how") renderDiagram();
-}));
-
-/* ---------------- shared results renderer ---------------- */
-function segText(p) {
-  return p.segments.map((s) => `E${String(s.episode).padStart(2, "0")} ${s.start_ts}–${s.end_ts}`).join(" + ");
+/* ---------------- views ---------------- */
+function show(view) {
+  $$(".view").forEach((v) => v.classList.toggle("on", v.id === "view-" + view));
+  $$(".nav a").forEach((a) => a.classList.toggle("on", a.dataset.view === view));
+  $("#export").style.visibility = view === "review" ? "visible" : "hidden";
+  if (view === "run") engine();
+  if (location.hash !== "#" + view) history.replaceState(null, "", "#" + view);
 }
-function cleanHook(t) { return String(t || "").replace(/^\[(\w+)\]\s*/, "($1) "); }
+$$("[data-view]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); show(a.dataset.view); }));
 
-function decisionsKey(runId) { return "pf-decisions-" + runId; }
-function loadDecisions(runId) { try { return JSON.parse(localStorage.getItem(decisionsKey(runId)) || "{}"); } catch { return {}; } }
-function saveDecisions(runId, d) { localStorage.setItem(decisionsKey(runId), JSON.stringify(d)); }
+/* ---------------- state ---------------- */
+const S = { data: null, runId: "", label: "", filter: "all", sel: null, decisions: {}, official: null };
+const decKey = () => "pf-dec-" + S.runId;
+const loadDec = () => { try { return JSON.parse(localStorage.getItem(decKey()) || "{}"); } catch { return {}; } };
+const saveDec = () => localStorage.setItem(decKey(), JSON.stringify(S.decisions));
+const allPromos = () => [...S.data.promos, ...S.data.montages];
+const warns = (p) => ((p.attention || {}).flags || []).length + (p.flags && (p.flags.spoiler_risk || p.flags.ad_policy_risk || p.flags.needs_context) ? 1 : 0);
+const segText = (p) => p.segments.map((s) => `E${pad(s.episode)} ${s.start_ts}–${s.end_ts}`).join("  +  ");
+const lineText = (t) => String(t || "").replace(/^\[(\w+)\]\s*/, "").replace(/^([^:"]{1,60}):\s*"(.*)"$/, "$2");
+const speaker = (t) => { const m = String(t || "").match(/^([^:"\[]{1,60}):\s*"/); return m ? m[1].replace(/\s*\([^)]*\)/g, "").trim() : (String(t).match(/^\[(\w+)\]/) || [, ""])[1]; };
 
-function card(p, data, runId, decisions) {
-  const el = $("#tpl-card").content.firstElementChild.cloneNode(true);
-  const isM = p.kind === "montage";
-  const rank = $(".rank", el);
-  rank.textContent = (isM ? "M" : "#") + p.rank;
-  rank.classList.toggle("montage", isM);
-  $(".where", el).innerHTML = `<b>${esc(segText(p))}</b>${Math.round(p.duration)} s · ${isM ? "montage of " + p.segments.length + " moments" : "single stretch"} · final ${p.final.toFixed(2)}`;
-  // pills: flags + attention warnings
-  const pills = $(".pills", el);
-  const f = p.flags || {};
-  if (f.spoiler_risk) pills.insertAdjacentHTML("beforeend", `<span class="pill bad">spoiler episode</span>`);
-  else if (f.judge_spoiler) pills.insertAdjacentHTML("beforeend", `<span class="pill" title="The judge thought this spoils the show; the spoiler vote disagreed, so it is not penalised">judge: spoiler?</span>`);
-  if (f.ad_policy_risk) pills.insertAdjacentHTML("beforeend", `<span class="pill bad">ad-policy risk</span>`);
-  if (f.needs_context) pills.insertAdjacentHTML("beforeend", `<span class="pill warn">needs context</span>`);
-  ((p.attention || {}).flags || []).forEach((w) => pills.insertAdjacentHTML("beforeend", `<span class="pill warn">⚠ ${esc(w)}</span>`));
-  if (p.source === "heuristic") pills.insertAdjacentHTML("beforeend", `<span class="pill">rule-based pick</span>`);
-  // timeline(s): where the clip sits in its episode
-  const tl = $(".timeline", el);
-  const durs = data.episode_durations || {};
-  const bars = p.segments.map((s) => {
-    const D = durs[s.episode] || durs[String(s.episode)] || Math.max(s.end, 1);
-    const l = (100 * s.start) / D, w = Math.max(1.5, (100 * (s.end - s.start)) / D);
-    return `<i style="left:${l}%;width:${w}%"></i>`;
-  });
-  if (p.segments.length > 1) { tl.classList.add("multi"); tl.innerHTML = bars.map((b) => `<div class="bar">${b}</div>`).join(""); }
-  else tl.innerHTML = bars[0];
-  tl.title = "Position of the clip inside its episode";
-  $(".hook q", el).textContent = cleanHook(p.hook);
-  $(".cliff q", el).textContent = cleanHook(p.cliffhanger);
-  $(".question", el).textContent = p.open_question ? "Leaves the viewer asking: " + p.open_question : "";
-  $(".why", el).textContent = p.why || "";
-  $(".ranknote", el).textContent = p.rank_reason ? "Why this rank: " + p.rank_reason : "";
-  const m = $(".metrics", el);
-  const sc = p.scores || {};
-  const names = { hook_3s: "hook", cliffhanger: "cliffhanger", standalone: "standalone", intensity: "intensity", plot_relevance: "plot", trope_fit: "trope" };
-  Object.entries(names).forEach(([k, n]) => { if (sc[k] != null) m.insertAdjacentHTML("beforeend", `<span class="metric">${n} <b>${(+sc[k]).toFixed(1)}</b>/5</span>`); });
-  if (p.attention && p.attention.hook_attention != null) {
-    m.insertAdjacentHTML("beforeend", `<span class="metric" title="Text attention proxy: first voice, motion, close-ups, sound in the first 3 s">attention <b>${p.attention.hook_attention.toFixed(2)}</b></span>`);
-    m.insertAdjacentHTML("beforeend", `<span class="metric" title="Pacing: dead air, cuts, speech share, ending beat">hold <b>${p.attention.hold.toFixed(2)}</b></span>`);
+function loadDataset(data, runId, label) {
+  S.data = data; S.runId = runId; S.label = label; S.decisions = loadDec(); S.filter = "all"; S.sel = null;
+  $$("#filters button").forEach((b) => b.classList.toggle("on", b.dataset.f === "all"));
+  const log = data.run_log || {};
+  $("#show-title").textContent = data.show;
+  $("#run-title").innerHTML = esc(label) + (S.official && data !== S.official ? ` · <a href="#review" id="back-official">back to official run</a>` : "");
+  const back = $("#back-official");
+  if (back) back.onclick = (e) => { e.preventDefault(); loadDataset(S.official, "official-" + S.official.run_id, "Official run"); };
+  const bits = [`<b>${log.episodes}</b> episodes`, `<b>${log.candidates_valid}</b> candidates`, `<b>${log.candidates_rejected}</b> rejected by checks`];
+  if (data.rules) bits.push(`<b>${data.rules.passing}/${data.rules.checked}</b> pass the rules`);
+  const ab = (data.auto_eval || {}).blind_ab_pipeline_vs_baseline;
+  if (ab) bits.push(`blind A/B vs baseline <b>${ab.pipeline}–${ab.baseline}</b>`);
+  if (log.llm && log.llm.total_calls != null && data !== S.official) bits.push(`<b>${log.llm.total_calls}</b> model calls`);
+  $("#run-meta").innerHTML = bits.join(" · ");
+  $("#n-all").textContent = allPromos().length;
+  $("#n-single").textContent = data.promos.length;
+  $("#n-montage").textContent = data.montages.length;
+  $("#n-warn").textContent = allPromos().filter(warns).length;
+  $("#n-rej").textContent = (data.rejected || []).length;
+  drawList();
+  const first = visible()[0];
+  if (first) select(first.pid);
+  tally();
+}
+
+/* ---------------- list ---------------- */
+function visible() {
+  if (!S.data || S.filter === "rejected") return [];
+  const q = $("#q").value.toLowerCase().trim();
+  let list = S.filter === "single" ? S.data.promos.slice() : S.filter === "montage" ? S.data.montages.slice() : allPromos();
+  if (S.filter === "warn") list = list.filter(warns);
+  if (q) list = list.filter((p) => [segText(p), p.hook, p.cliffhanger, p.why, p.open_question, ...(p.excerpt || [])].join(" ").toLowerCase().includes(q));
+  const sort = $("#sort").value;
+  if (sort === "episode") list.sort((a, b) => a.segments[0].episode - b.segments[0].episode || a.segments[0].start - b.segments[0].start);
+  else if (sort === "attention") list.sort((a, b) => ((b.attention || {}).hook_attention || 0) - ((a.attention || {}).hook_attention || 0));
+  return list;
+}
+function drawList() {
+  const ol = $("#rows");
+  if (S.filter === "rejected") {
+    ol.innerHTML = `<li class="none">${(S.data.rejected || []).length} candidates failed the code checks. The list is on the right.</li>`;
+    drawRejected();
+    return;
   }
-  $(".script pre", el).textContent = (p.excerpt || []).join("\n");
-  const dec = $(".decision", el);
-  const apply = () => {
-    const d = decisions[p.pid];
-    el.classList.toggle("approved", d === "approved");
-    el.classList.toggle("rejected", d === "rejected");
-    dec.textContent = d ? "Marked " + d : "";
-  };
-  $(".approve", el).onclick = () => { decisions[p.pid] = decisions[p.pid] === "approved" ? undefined : "approved"; saveDecisions(runId, decisions); apply(); };
-  $(".reject", el).onclick = () => { decisions[p.pid] = decisions[p.pid] === "rejected" ? undefined : "rejected"; saveDecisions(runId, decisions); apply(); };
-  apply();
-  return el;
+  const list = visible();
+  ol.innerHTML = list.map((p) => {
+    const d = S.decisions[p.pid] || "";
+    const isM = p.kind === "montage";
+    const s0 = p.segments[0];
+    const w = warns(p);
+    return `<li class="row ${p.pid === S.sel ? "sel" : ""} ${d}" data-pid="${p.pid}">
+      <span class="rk">${isM ? "M" : ""}${p.rank}</span>
+      <div><div class="tc"><span class="ep">E${pad(s0.episode)}</span> ${s0.start_ts} → ${p.segments[p.segments.length - 1].end_ts}${isM ? ` · ${p.segments.length} parts` : ""}</div>
+        <div class="line1">${esc(lineText(p.hook))}</div></div>
+      <div class="side"><span class="score">${Math.round(p.duration)}s</span>${w ? `<span class="warn">!</span> ` : ""}<span class="state ${d}"></span></div>
+    </li>`;
+  }).join("") || `<li class="none">No promos match.</li>`;
+  $$(".row", ol).forEach((li) => li.addEventListener("click", () => select(li.dataset.pid)));
+}
+$$("#filters button").forEach((b) => b.addEventListener("click", () => {
+  S.filter = b.dataset.f;
+  $$("#filters button").forEach((x) => x.classList.toggle("on", x === b));
+  drawList();
+  if (S.filter !== "rejected") { const v = visible(); if (v.length && !v.find((p) => p.pid === S.sel)) select(v[0].pid); else if (S.sel) select(S.sel); }
+}));
+$("#q").addEventListener("input", drawList);
+$("#sort").addEventListener("change", drawList);
+
+/* ---------------- detail ---------------- */
+function parseExcerpt(ex) {
+  return (ex || []).map((l) => {
+    if (l.startsWith("---")) return { brk: l.replace(/^-+\s*/, "") };
+    const m = l.match(/^(E\d+_L\d+)\s+(\d+:\d+(?:\.\d+)?)\s+(.*)$/);
+    if (!m) return { text: l };
+    return { id: m[1], t: m[2], raw: m[3] };
+  });
+}
+function select(pid) {
+  S.sel = pid;
+  $$(".row").forEach((r) => r.classList.toggle("sel", r.dataset.pid === pid));
+  const li = $(`.row[data-pid="${pid}"]`);
+  if (li) li.scrollIntoView({ block: "nearest" });
+  const p = allPromos().find((x) => x.pid === pid);
+  if (p) drawDetail(p);
+  tally();
+}
+function drawDetail(p) {
+  const isM = p.kind === "montage";
+  const ex = parseExcerpt(p.excerpt);
+  const timeOf = (id) => { const l = ex.find((x) => x.id === id); return l ? toSec(l.t) : null; };
+  const f = p.flags || {}, att = p.attention || {};
+  const flags = [];
+  if (f.spoiler_risk) flags.push(`<span class="flag bad">Spoiler episode</span>`);
+  else if (f.judge_spoiler) flags.push(`<span class="flag muted" title="The judge thought this spoils the show; the per-show spoiler vote disagreed, so it is not penalised">Judge flagged a possible spoiler</span>`);
+  if (f.ad_policy_risk) flags.push(`<span class="flag bad">Ad-policy risk</span>`);
+  if (f.needs_context) flags.push(`<span class="flag">Needs context</span>`);
+  (att.flags || []).forEach((w) => flags.push(`<span class="flag">${esc(w[0].toUpperCase() + w.slice(1))}</span>`));
+  if (p.source === "heuristic") flags.push(`<span class="flag muted">Rule-based pick</span>`);
+
+  // timeline track(s)
+  const durs = S.data.episode_durations || {};
+  const hookT = timeOf(p.hook_line_id), cutT = timeOf(p.cliffhanger_line_id);
+  const track = p.segments.map((s, i) => {
+    const D = durs[s.episode] || durs[String(s.episode)] || Math.max(s.end, 1);
+    const L = (x) => Math.max(0, Math.min(100, (100 * x) / D));
+    let marks = "";
+    const side = (x) => (L(x) < 8 ? " l" : L(x) > 92 ? " r" : "");
+    if (i === 0 && hookT != null) marks += `<span class="track-mark${side(hookT)}" style="left:${L(hookT)}%">HOOK ${tc(hookT)}</span>`;
+    if (i === p.segments.length - 1 && cutT != null) marks += `<span class="track-mark cut${side(cutT)}" style="left:${L(cutT)}%">CLIFF ${tc(cutT)}</span>`;
+    return `<div class="track-seg"><div class="track-label"><span>Episode ${s.episode}${isM ? ` · part ${i + 1}` : ""}</span><span>00:00.00 — ${tc(D)}</span></div>
+      <div class="track-bar"><span class="track-in" style="left:${L(s.start)}%;width:${Math.max(.6, L(s.end) - L(s.start))}%"></span>${marks}</div></div>`;
+  }).join("");
+
+  // script
+  const script = ex.map((l) => {
+    if (l.brk) return `<div class="sl seg-break">${esc(l.brk)}</div>`;
+    if (!l.id) return `<div class="sl"><span></span><span></span><span>${esc(l.text)}</span></div>`;
+    const isAct = /^\[(action|sfx|camera)\]/i.test(l.raw);
+    const cls = [l.id === p.hook_line_id ? "hook" : "", l.id === p.cliffhanger_line_id ? "cut" : "", isAct ? "act" : ""].join(" ");
+    const tag = l.id === p.hook_line_id ? "HOOK" : l.id === p.cliffhanger_line_id ? "CLIFF" : "";
+    const who = speaker(l.raw);
+    return `<div class="sl ${cls}"><span class="t">${esc(l.t)}</span><span class="tag">${tag}</span><span>${isAct ? esc(lineText(l.raw)) : `<span class="who">${esc(who)}</span>${esc(lineText(l.raw))}`}</span></div>`;
+  }).join("");
+
+  const scoreRows = SCORE_NAMES.filter(([k]) => p.scores && p.scores[k] != null).map(([k, n]) =>
+    `<tr><td>${n}</td><td><div class="meter"><i style="width:${(p.scores[k] / 5) * 100}%"></i></div></td><td class="v">${(+p.scores[k]).toFixed(1)}</td></tr>`).join("");
+  const attRows = att.hook_attention != null ? `
+    <tr><td title="How soon someone speaks, motion, close-ups and sound in the first 3 s, read from the screenplay">Attention, first 3 s</td><td><div class="meter"><i style="width:${att.hook_attention * 100}%"></i></div></td><td class="v">${att.hook_attention.toFixed(2)}</td></tr>
+    <tr><td title="Dead air, cutting pace, share of time with speech, ending beat">Hold</td><td><div class="meter"><i style="width:${att.hold * 100}%"></i></div></td><td class="v">${att.hold.toFixed(2)}</td></tr>` : "";
+
+  $("#detail").innerHTML = `
+    <div class="d-top"><span class="d-rank">${isM ? "Montage " : "#"}${p.rank}</span><h1 class="d-title">${esc(lineText(p.hook))}</h1></div>
+    <div class="d-sub">${esc(segText(p))}<span class="sep">·</span>${Math.round(p.duration)} s<span class="sep">·</span>score ${p.final.toFixed(2)}</div>
+    ${flags.length ? `<div class="flags">${flags.join("")}</div>` : ""}
+    <div class="track">${track}</div>
+    <div class="d-grid">
+      <div>
+        <h3 class="sec-h">Ends on</h3>
+        <p class="pull">${esc(lineText(p.cliffhanger))}</p>
+        <div class="who">${esc(speaker(p.cliffhanger))}${p.open_question ? ` — leaves the viewer asking: ${esc(p.open_question)}` : ""}</div>
+        <h3 class="sec-h" style="margin-top:22px">Script</h3>
+        <div class="script">${script}</div>
+      </div>
+      <div class="notes">
+        ${p.why ? `<h3 class="sec-h">Why it works</h3><p>${esc(p.why)}</p>` : ""}
+        ${p.rank_reason ? `<h3 class="sec-h">Why this rank</h3><p>${esc(p.rank_reason)}</p>` : ""}
+        ${scoreRows || attRows ? `<h3 class="sec-h">Scores</h3><table class="scores">${scoreRows}${attRows}</table>` : ""}
+        ${p.score_note && p.score_note !== "none" ? `<h3 class="sec-h">Judge's main doubt</h3><p>${esc(p.score_note)}</p>` : ""}
+      </div>
+    </div>`;
+  $("#detail").scrollTop = 0;
+}
+function drawRejected() {
+  const rej = S.data.rejected || [];
+  $("#detail").innerHTML = `<h1 class="d-title" style="margin-bottom:6px">Rejected by the code checks</h1>
+    <p class="d-sub" style="margin-bottom:18px">${rej.length} proposals failed a hard rule. Most were sent back to the model with the lines that would fix them.</p>
+    <table class="table"><tr><th>Episode</th><th>Lines</th><th>Reason</th></tr>${rej.map((r) =>
+      `<tr><td class="mono">${esc(r.episode ?? "—")}</td><td class="mono">${esc((r.start_line || "") + (r.end_line ? " – " + r.end_line : ""))}</td><td>${esc(r.reason)}${r.repaired ? " <span style='color:var(--ink-3)'>(repair tried)</span>" : ""}</td></tr>`).join("")}</table>`;
 }
 
-function download(name, text, type = "text/plain") {
+/* ---------------- approve / reject ---------------- */
+function decide(kind) {
+  if (!S.sel) return;
+  S.decisions[S.sel] = S.decisions[S.sel] === kind ? undefined : kind;
+  saveDec();
+  const cur = S.sel;
+  drawList();
+  select(cur);
+  if (S.decisions[cur]) step(1);
+}
+function step(d) {
+  const v = visible();
+  const i = v.findIndex((p) => p.pid === S.sel);
+  const n = v[Math.max(0, Math.min(v.length - 1, i + d))];
+  if (n) select(n.pid);
+}
+function tally() {
+  if (!S.data) return;
+  const vals = Object.values(S.decisions);
+  const a = vals.filter((x) => x === "approved").length, r = vals.filter((x) => x === "rejected").length;
+  $("#tally").textContent = `${a} approved · ${r} rejected · ${allPromos().length - a - r} to review`;
+  const cur = S.decisions[S.sel];
+  $("#act-approve").textContent = cur === "approved" ? "Approved ✓" : "Approve";
+  $("#act-reject").classList.toggle("is-on", cur === "rejected");
+  $("#act-reject").textContent = cur === "rejected" ? "Rejected" : "Reject";
+}
+$("#act-approve").onclick = () => decide("approved");
+$("#act-reject").onclick = () => decide("rejected");
+document.addEventListener("keydown", (e) => {
+  if (!$("#view-review").classList.contains("on") || /input|select|textarea/i.test(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === "j" || e.key === "ArrowDown") { e.preventDefault(); step(1); }
+  else if (k === "k" || e.key === "ArrowUp") { e.preventDefault(); step(-1); }
+  else if (k === "a") decide("approved");
+  else if (k === "r") decide("rejected");
+});
+
+/* ---------------- export ---------------- */
+function download(name, text, type) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([text], { type }));
-  a.download = name;
-  a.click();
+  a.download = name; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
-
-function decisionsCsv(data, decisions) {
-  const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const rows = [["rank", "id", "segments", "duration_s", "hook", "cliffhanger", "why", "decision"]];
-  [...data.promos, ...data.montages].forEach((p) => rows.push([(p.kind === "montage" ? "M" : "") + p.rank, p.pid, segText(p),
-    p.duration, p.hook, p.cliffhanger, p.why, decisions[p.pid] || ""]));
-  return rows.map((r) => r.map(q).join(",")).join("\n");
-}
-
-function renderResults(data, root, runId) {
-  const decisions = loadDecisions(runId);
-  root.innerHTML = "";
-  // toolbar
-  const tb = document.createElement("div");
-  tb.className = "toolbar";
-  tb.innerHTML = `<input type="search" placeholder="Search hooks, lines, episodes…" class="q">
-    <select class="sort"><option value="rank">Sort: rank</option><option value="episode">Sort: episode</option>
-    <option value="attention">Sort: attention</option></select>
-    <label class="check"><input type="checkbox" class="warnonly"> only clips with warnings</label>
-    <span class="spacer"></span>
-    <button class="btn small dl-md">promos.md</button><button class="btn small dl-csv">promos.csv</button>
-    <button class="btn small dl-json">JSON</button><button class="btn small dl-dec">My decisions (CSV)</button>`;
-  root.appendChild(tb);
-  const grid = document.createElement("div");
-  grid.className = "grid";
-  root.appendChild(grid);
-  const draw = () => {
-    const q = $(".q", tb).value.toLowerCase().trim();
-    const warn = $(".warnonly", tb).checked;
-    let list = data.promos.slice();
-    const sort = $(".sort", tb).value;
-    if (sort === "episode") list.sort((a, b) => a.segments[0].episode - b.segments[0].episode || a.segments[0].start - b.segments[0].start);
-    if (sort === "attention") list.sort((a, b) => ((b.attention || {}).hook_attention || 0) - ((a.attention || {}).hook_attention || 0));
-    list = list.filter((p) => {
-      if (warn && !(((p.attention || {}).flags || []).length || Object.values(p.flags || {}).some(Boolean))) return false;
-      if (!q) return true;
-      return [segText(p), p.hook, p.cliffhanger, p.why, p.open_question, ...(p.excerpt || [])].join(" ").toLowerCase().includes(q);
-    });
-    grid.innerHTML = "";
-    list.forEach((p) => grid.appendChild(card(p, data, runId, decisions)));
-    if (!list.length) grid.innerHTML = `<p class="muted">No promos match.</p>`;
-  };
-  ["input", "change"].forEach((ev) => tb.addEventListener(ev, draw));
-  $(".dl-md", tb).onclick = () => download("promos.md", data.markdown || "", "text/markdown");
-  $(".dl-csv", tb).onclick = () => download("promos.csv", data.csv || "", "text/csv");
-  $(".dl-json", tb).onclick = () => download("promos.json", JSON.stringify({ show: data.show, promos: data.promos, montages: data.montages }, null, 2), "application/json");
-  $(".dl-dec", tb).onclick = () => download("promos_with_decisions.csv", decisionsCsv(data, decisions), "text/csv");
-  draw();
-
-  if (data.montages && data.montages.length) {
-    root.insertAdjacentHTML("beforeend", `<h3 class="section-title">Montage promos <span class="muted small">(2–3 moments joined in story order)</span></h3>`);
-    const mg = document.createElement("div");
-    mg.className = "grid";
-    data.montages.forEach((p) => mg.appendChild(card(p, data, runId, decisions)));
-    root.appendChild(mg);
+$("#export-btn").onclick = (e) => { e.stopPropagation(); $("#export-menu").hidden = !$("#export-menu").hidden; };
+document.addEventListener("click", () => { $("#export-menu").hidden = true; });
+$$("#export-menu button").forEach((b) => b.addEventListener("click", () => {
+  const d = S.data;
+  if (!d) return;
+  if (b.dataset.dl === "md") download("promos.md", d.markdown || "", "text/markdown");
+  if (b.dataset.dl === "csv") download("promos.csv", d.csv || "", "text/csv");
+  if (b.dataset.dl === "json") download("promos.json", JSON.stringify({ show: d.show, promos: d.promos, montages: d.montages }, null, 2), "application/json");
+  if (b.dataset.dl === "dec") {
+    const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = [["rank", "id", "segments", "duration_s", "hook", "cliffhanger", "decision"],
+      ...allPromos().map((p) => [(p.kind === "montage" ? "M" : "") + p.rank, p.pid, segText(p), p.duration, p.hook, p.cliffhanger, S.decisions[p.pid] || ""])];
+    download("promos_with_approvals.csv", rows.map((r) => r.map(q).join(",")).join("\n"), "text/csv");
   }
-  // rejected + candidates
-  const rej = data.rejected || [];
-  const det = document.createElement("details");
-  det.className = "block";
-  det.innerHTML = `<summary>Rejected by the code checks: ${rej.length} <span class="muted small">(where the model or the rules misfire)</span></summary>
-    <table class="tbl"><tr><th>Source</th><th>Episode</th><th>Lines</th><th>Reason</th></tr>${rej.map((r) =>
-      `<tr><td>${esc(r.source)}</td><td>${esc(r.episode ?? "")}</td><td>${esc((r.start_line || "") + (r.end_line ? "–" + r.end_line : ""))}</td><td>${esc(r.reason)}${r.repaired ? ' <span class="pill">repair attempted</span>' : ""}</td></tr>`).join("")}</table>`;
-  root.appendChild(det);
-  if (data.bible && data.bible.premise) {
-    root.insertAdjacentHTML("beforeend", `<details class="block"><summary>Story bible (model-written)</summary><p>${esc(data.bible.premise)}</p>
-      <pre class="small" style="white-space:pre-wrap">${esc(JSON.stringify(data.bible, null, 1))}</pre></details>`);
-  }
-}
-
-function stat(v, label) { return `<div class="stat"><b>${esc(v)}</b><span>${esc(label)}</span></div>`; }
+}));
 
 /* ---------------- official results ---------------- */
-(async function official() {
+(async () => {
   try {
     const data = await (await fetch("data/official.json")).json();
-    const log = data.run_log || {};
-    $("#official-title").textContent = `${data.show}: ${data.promos.length} ranked promos`;
-    $("#official-sub").textContent = `Official run (${data.run_id}) on all ${log.episodes} episodes. Ranked by what to post first; ` +
-      `every timestamp was computed by code from script lines. Approve / reject is saved in this browser.`;
-    const ae = data.auto_eval || {};
-    const ab = ae.blind_ab_pipeline_vs_baseline;
-    $("#official-stats").innerHTML = [
-      stat(log.episodes, "episodes read"),
-      stat(log.candidates_valid, "valid candidate clips"),
-      stat(log.candidates_rejected, "rejected by code checks"),
-      stat(`${data.promos.length} + ${data.montages.length}`, "promos + montages"),
-      data.rules ? stat(`${data.rules.passing}/${data.rules.checked}`, "pass the hard rules (re-checked)") : "",
-      ab ? stat(`${ab.pipeline}–${ab.baseline}`, `blind A/B vs rule baseline (${ab.tie} ties)`) : "",
-    ].join("");
-    renderResults(data, $("#official-view"), "official-" + data.run_id);
+    S.official = data;
+    loadDataset(data, "official-" + data.run_id, "Official run");
   } catch (e) {
-    $("#official-title").textContent = "Could not load the official results";
-    $("#official-sub").textContent = String(e);
+    $("#show-title").textContent = "Could not load the official results";
+    $("#run-title").textContent = String(e);
   }
 })();
 
 /* ---------------- Python engine ---------------- */
 let enginePromise = null;
-function loadScript(src) {
-  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
-}
+const note = (t, bad = false) => { const n = $("#engine-note"); n.textContent = t; n.classList.toggle("bad", bad); };
+const loadScript = (src) => new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
 function engine() {
   if (!enginePromise) {
     enginePromise = (async () => {
-      note("Loading the Python engine (first visit ~10 MB, then cached)…");
+      note("Loading the Python engine…");
       await loadScript(PYODIDE_URL + "pyodide.js");
       const py = await loadPyodide({ indexURL: PYODIDE_URL });
       await py.loadPackage(["pydantic", "pyyaml"]);
@@ -210,33 +289,31 @@ function engine() {
       note("Engine ready.");
       return py;
     })();
-    enginePromise.catch((e) => { enginePromise = null; note("Engine failed to load: " + e, true); });
+    enginePromise.catch((e) => { enginePromise = null; note("The engine failed to load: " + e, true); });
   }
   return enginePromise;
 }
-function note(t, err = false) { const n = $("#engine-note"); n.textContent = t; n.style.color = err ? "var(--bad)" : ""; }
 
-/* ---------------- run tab ---------------- */
+/* ---------------- run ---------------- */
 let mode = "ai";
-let loadedInfo = null;
-$$(".seg-btn").forEach((b) => b.addEventListener("click", () => {
+$$("#mode button").forEach((b) => b.addEventListener("click", () => {
   mode = b.dataset.mode;
-  $$(".seg-btn").forEach((x) => x.classList.toggle("active", x === b));
+  $$("#mode button").forEach((x) => x.classList.toggle("on", x === b));
   $("#ai-opts").hidden = mode !== "ai";
 }));
-function applyProviderDefaults() {
+function providerDefaults() {
   const p = $("#provider").value;
   $("#bulk-model").value = DEFAULTS[p].bulk;
   $("#judge-model").value = DEFAULTS[p].judge;
-  $("#bulk-model").placeholder = $("#judge-model").placeholder = DEFAULTS[p].bulk ? "" : "model name (required)";
+  $("#bulk-model").placeholder = $("#judge-model").placeholder = DEFAULTS[p].bulk ? "" : "Model name";
   $("#baseurl-wrap").hidden = p !== "custom";
 }
-$("#provider").addEventListener("change", applyProviderDefaults);
-applyProviderDefaults();
+$("#provider").addEventListener("change", providerDefaults);
+providerDefaults();
 
 async function loadEpisodes(files, showName) {
-  $("#loaded").className = "loaded muted";
-  $("#loaded").textContent = "Reading episodes…";
+  const st = $("#loaded");
+  st.className = "status-line"; st.textContent = "Reading…";
   try {
     const py = await engine();
     const arr = [];
@@ -244,103 +321,75 @@ async function loadEpisodes(files, showName) {
     const bridge = py.pyimport("bridge");
     const info = JSON.parse(bridge.load_files(py.toPy(arr)));
     if (showName) { bridge.set_show(showName); info.show = showName; }
-    if (!info.episodes) throw new Error("no parsable episode screenplays found (expected the timestamped .txt format)");
-    loadedInfo = info;
-    $("#loaded").className = "loaded ok";
-    $("#loaded").textContent = `✓ ${info.show}: ${info.episodes} episodes (ep ${info.first}–${info.last}), ${info.lines} script lines, ${info.minutes} min of screen time.`;
+    if (!info.episodes) throw new Error("no readable screenplay or subtitle text found");
+    st.className = "status-line ok";
+    st.textContent = `${info.show} — ${info.episodes} ${info.episodes === 1 ? "part" : "episodes"} · ${info.lines} lines · ${info.minutes} min`;
     $("#run-btn").disabled = false;
   } catch (e) {
-    $("#loaded").className = "loaded";
-    $("#loaded").innerHTML = `<span style="color:var(--bad)">Could not read the files: ${esc(e.message || e)}</span>`;
+    st.className = "status-line bad"; st.textContent = "Could not read the files: " + (e.message || e);
   }
 }
 const drop = $("#drop");
-drop.addEventListener("click", (e) => { if (e.target.tagName !== "INPUT") $("#files").click(); });
 $("#files").addEventListener("change", (e) => e.target.files.length && loadEpisodes([...e.target.files]));
 ["dragover", "dragenter"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
 ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
 drop.addEventListener("drop", (e) => e.dataTransfer.files.length && loadEpisodes([...e.dataTransfer.files]));
 $("#use-sample").addEventListener("click", async () => {
-  $("#loaded").textContent = "Fetching the sample show…";
+  $("#loaded").textContent = "Fetching the sample…";
   const blob = await (await fetch("data/sample_show.zip")).blob();
   loadEpisodes([new File([blob], "sample_show.zip")], "I Married a Broken Soldier. He was a Duke");
 });
-// warm the engine in the background as soon as someone opens the Run tab
-$$(".tab").forEach((b) => b.addEventListener("click", () => { if (b.dataset.tab === "run") engine(); }));
 
-function buildStages() {
-  $("#stages").innerHTML = STAGES.map(([k, label]) => `<div class="stage" id="st-${k}"><div class="stage-top"><span>${label}</span><span class="cnt muted">waiting</span></div><div class="bar-out"><div class="bar-in"></div></div></div>`).join("");
-}
 function setStage(stage, i, n) {
   const el = $("#st-" + stage);
   if (!el) return;
-  $(".cnt", el).textContent = n ? `${i}/${n}` : "";
-  $(".bar-in", el).style.width = (n ? (100 * i) / n : 0) + "%";
+  $(".cnt", el).textContent = n ? `${i} / ${n}` : "";
+  $(".pb i", el).style.width = (n ? (100 * i) / n : 0) + "%";
+  el.classList.add("active");
   el.classList.toggle("done", n > 0 && i >= n);
 }
-function log(line) { const l = $("#log"); l.textContent += line + "\n"; l.scrollTop = l.scrollHeight; }
+const log = (line) => { const l = $("#log"); l.textContent += line + "\n"; l.scrollTop = l.scrollHeight; };
 
 $("#run-btn").addEventListener("click", async () => {
   const useLlm = mode === "ai";
   const provider = $("#provider").value;
-  const opts = {
-    use_llm: useLlm, provider, key: $("#key").value.trim(), base_url: $("#baseurl").value.trim(),
-    bulk_model: $("#bulk-model").value.trim(), judge_model: $("#judge-model").value.trim(),
-    profile: $("#profile").value, montage: $("#montage").checked,
-  };
-  const view = $("#run-view");
-  view.innerHTML = "";
-  if (useLlm && !opts.key) { view.innerHTML = `<div class="banner err">Paste an API key, or switch to "Instant baseline (no key)".</div>`; return; }
-  if (useLlm && (!opts.bulk_model || !opts.judge_model)) { view.innerHTML = `<div class="banner err">Enter a candidate model and a judge model for this provider.</div>`; return; }
-  if (useLlm && provider === "custom" && !opts.base_url) { view.innerHTML = `<div class="banner err">Enter the base URL of your OpenAI-compatible endpoint.</div>`; return; }
+  const opts = { use_llm: useLlm, provider, key: $("#key").value.trim(), base_url: $("#baseurl").value.trim(),
+    bulk_model: $("#bulk-model").value.trim(), judge_model: $("#judge-model").value.trim(), profile: $("#profile").value, montage: $("#montage").checked };
+  const err = $("#run-error");
+  const fail = (m) => { $("#progress").hidden = false; err.hidden = false; err.textContent = m; };
+  err.hidden = true;
+  if (useLlm && !opts.key) return fail("Add an API key, or switch to the rule baseline.");
+  if (useLlm && (!opts.bulk_model || !opts.judge_model)) return fail("Enter a candidate model and a judge model for this provider.");
+  if (useLlm && provider === "custom" && !opts.base_url) return fail("Enter the base URL of your OpenAI-compatible endpoint.");
   const btn = $("#run-btn");
-  btn.disabled = true;
-  btn.textContent = "Working…";
-  $("#progress-card").hidden = false;
-  $("#log").textContent = "";
-  buildStages();
-  $("#progress-card").scrollIntoView({ behavior: "smooth", block: "start" });
-  if (!useLlm) $("#stages").innerHTML = `<p class="muted">Rule-based baseline: keyword, emotion and punctuation rules, no AI calls.</p>`;
+  btn.disabled = true; btn.textContent = "Running…";
+  $("#progress").hidden = false; $("#log").textContent = "";
+  $("#stages").innerHTML = useLlm ? STAGES.map(([k, n]) => `<div class="stage" id="st-${k}"><span>${n}</span><span class="pb"><i></i></span><span class="cnt">—</span></div>`).join("")
+    : `<div class="stage active"><span>Rule baseline</span><span class="pb"><i style="width:100%"></i></span><span class="cnt">no calls</span></div>`;
+  $("#progress").scrollIntoView({ behavior: "smooth", block: "start" });
   const t0 = Date.now();
   const timer = setInterval(() => { $("#elapsed").textContent = Math.round((Date.now() - t0) / 1000) + " s"; }, 500);
   try {
     const py = await engine();
     const bridge = py.pyimport("bridge");
-    await new Promise((r) => setTimeout(r, 50)); // let the UI paint before the CPU-heavy parse/backstop step
+    await new Promise((r) => setTimeout(r, 50));
     const out = await bridge.run(JSON.stringify(opts), (s, i, n) => setStage(s, i, n), (m) => log(m));
     const data = JSON.parse(out);
-    const lg = data.run_log || {};
-    const llm = lg.llm || {};
     const secs = Math.round((Date.now() - t0) / 1000);
-    view.innerHTML = `<div class="intro"><h2 style="margin-top:22px">${esc(data.show)}: ${data.promos.length} ranked promos</h2>
-      <p class="muted">${esc(lg.mode)}${lg.profile ? " · " + esc(lg.profile) : ""} · ${secs} s · ${llm.total_calls || 0} model calls</p>
-      <div class="stats">${[stat(lg.episodes, "episodes"), stat(lg.candidates_valid, "valid candidates"), stat(lg.candidates_rejected, "rejected by checks"),
-        stat(`${data.promos.length} + ${data.montages.length}`, "promos + montages")].join("")}</div></div><div id="run-results"></div>`;
-    renderResults(data, $("#run-results"), "run-" + t0);
     log(`Done in ${secs} s.`);
-    view.scrollIntoView({ behavior: "smooth", block: "start" });
+    const label = `Your run · ${useLlm ? (data.run_log.profile || "AI") : "rule baseline"} · ${secs} s`;
+    loadDataset(data, "run-" + t0, label);
+    show("review");
   } catch (e) {
     const lines = String(e.message || e).split("\n").filter(Boolean);
     const fatal = lines.filter((l) => /FatalProviderError: /.test(l)).pop();
-    const msg = fatal ? fatal.replace(/^.*FatalProviderError:\s*/, "") : lines.slice(-2).join(" ");
-    view.innerHTML = `<div class="banner err"><b>Run stopped.</b> ${esc(msg)}</div>`;
-    $("#progress-card").scrollIntoView({ behavior: "smooth", block: "start" });
+    fail(fatal ? fatal.replace(/^.*FatalProviderError:\s*/, "") : "The run stopped: " + lines.slice(-2).join(" "));
     log("ERROR: " + e);
   } finally {
     clearInterval(timer);
-    btn.disabled = false;
-    btn.textContent = "Find promos";
+    btn.disabled = false; btn.textContent = "Find promos";
   }
 });
 
-/* ---------------- diagram ---------------- */
-let diagramDone = false;
-async function renderDiagram() {
-  if (diagramDone) return;
-  diagramDone = true;
-  try {
-    const { default: mermaid } = await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs");
-    mermaid.initialize({ startOnLoad: false, theme: "neutral" });
-    await mermaid.run({ nodes: [$("#diagram")] });
-  } catch (e) { diagramDone = false; }
-}
+/* ---------------- start ---------------- */
+show((location.hash || "#review").slice(1).replace(/[^a-z]/g, "") || "review");

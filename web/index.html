@@ -3,179 +3,231 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PromoFinder: find the promos in a microdrama</title>
-  <meta name="description" content="Reads a timestamped microdrama screenplay and returns ranked 20-60 s promo clips: hook in the first 3 s, cliffhanger ending, makes sense alone.">
-  <link rel="stylesheet" href="style.css">
+  <title>PromoFinder — promo picks for microdrama</title>
+  <meta name="description" content="Reads a timestamped microdrama screenplay and returns ranked 20–60 s promo clips: hook in the first 3 s, cliffhanger at the cut, makes sense alone.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
-<header class="top">
-  <div class="brand">
-    <span class="logo">▶</span>
-    <div>
-      <h1>PromoFinder</h1>
-      <p class="tag">Finds and ranks 20–60 s promo clips in microdrama screenplays. The AI names script lines; code computes every timestamp.</p>
-    </div>
-  </div>
-  <nav class="tabs" role="tablist">
-    <button class="tab active" data-tab="results" role="tab">Official results</button>
-    <button class="tab" data-tab="run" role="tab">Run on your episodes</button>
-    <button class="tab" data-tab="how" role="tab">How it works</button>
+<header class="bar">
+  <a class="wordmark" href="#review" data-view="review">PromoFinder</a>
+  <nav class="nav">
+    <a href="#review" data-view="review" class="on">Review</a>
+    <a href="#run" data-view="run">Run</a>
+    <a href="#method" data-view="method">Method</a>
   </nav>
+  <div class="bar-right">
+    <div class="export" id="export">
+      <button class="btn-quiet" id="export-btn" aria-haspopup="true">Export</button>
+      <div class="menu" id="export-menu" hidden>
+        <button data-dl="md">promos.md</button>
+        <button data-dl="csv">promos.csv</button>
+        <button data-dl="json">promos.json</button>
+        <button data-dl="dec">My approvals (.csv)</button>
+      </div>
+    </div>
+    <a class="btn-quiet" href="https://github.com/deltaparticle/Kuku-Assignment" target="_blank" rel="noopener">GitHub</a>
+  </div>
 </header>
 
-<main>
-  <!-- ============ OFFICIAL RESULTS ============ -->
-  <section id="tab-results" class="panel active">
-    <div id="official-intro" class="intro">
-      <h2 id="official-title">Loading results…</h2>
-      <p class="muted" id="official-sub"></p>
-      <div class="stats" id="official-stats"></div>
+<!-- ================= REVIEW ================= -->
+<section class="view on" id="view-review">
+  <div class="crumbs">
+    <div>
+      <span class="crumb-show" id="show-title">Loading…</span>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-run" id="run-title"></span>
     </div>
-    <div id="official-view"></div>
-  </section>
+    <div class="meta" id="run-meta"></div>
+  </div>
 
-  <!-- ============ RUN ============ -->
-  <section id="tab-run" class="panel">
-    <div class="run-grid">
-      <div class="card form">
-        <h2>1 · Episodes</h2>
+  <div class="desk">
+    <aside class="list-pane">
+      <div class="list-tools">
+        <div class="filters" id="filters">
+          <button data-f="all" class="on">All <i id="n-all"></i></button>
+          <button data-f="single">Singles <i id="n-single"></i></button>
+          <button data-f="montage">Montages <i id="n-montage"></i></button>
+          <button data-f="warn">Warnings <i id="n-warn"></i></button>
+          <button data-f="rejected">Rejected by checks <i id="n-rej"></i></button>
+        </div>
+        <div class="list-search">
+          <input id="q" type="search" placeholder="Search lines, episodes" autocomplete="off">
+          <select id="sort" aria-label="Sort">
+            <option value="rank">Rank</option>
+            <option value="episode">Episode</option>
+            <option value="attention">Attention</option>
+          </select>
+        </div>
+      </div>
+      <ol class="rows" id="rows"></ol>
+    </aside>
+
+    <article class="detail" id="detail">
+      <div class="empty">Select a promo.</div>
+    </article>
+  </div>
+
+  <footer class="actionbar" id="actionbar">
+    <div class="keys"><kbd>J</kbd><kbd>K</kbd> move <span class="dot">·</span> <kbd>A</kbd> approve <span class="dot">·</span> <kbd>R</kbd> reject</div>
+    <div class="acts">
+      <span class="tally" id="tally"></span>
+      <button class="btn-line" id="act-reject">Reject</button>
+      <button class="btn-solid" id="act-approve">Approve</button>
+    </div>
+  </footer>
+</section>
+
+<!-- ================= RUN ================= -->
+<section class="view" id="view-run">
+  <div class="page">
+    <div class="page-head">
+      <h1>Run on a show</h1>
+      <p>Everything runs in this browser tab. Episodes are read locally; model calls go straight from here to the provider you choose, with your key. Nothing is sent to us.</p>
+    </div>
+
+    <div class="settings">
+      <div class="set-group">
+        <h2>Source</h2>
         <label class="drop" id="drop">
           <input type="file" id="files" accept=".zip,.txt,.srt,.vtt" multiple hidden>
-          <strong>Drop a .zip of episodes, .txt screenplays, or a .srt/.vtt subtitle file</strong>
-          <span class="muted">or click to choose files · read in your browser, never uploaded to us</span>
+          <span>Drop a <b>.zip</b> of episode screenplays, <b>.txt</b> files, or one <b>.srt / .vtt</b> subtitle file</span>
+          <span class="sub">or click to choose</span>
         </label>
-        <div class="or">or</div>
-        <button class="btn ghost" id="use-sample">Use the sample show (50 episodes)</button>
-        <div id="loaded" class="loaded muted">No episodes loaded yet.</div>
-
-        <h2>2 · Mode</h2>
-        <div class="seg" id="mode">
-          <button class="seg-btn active" data-mode="ai">AI pipeline</button>
-          <button class="seg-btn" data-mode="baseline">Instant baseline (no key)</button>
+        <div class="row-line">
+          <span class="lbl">Sample</span>
+          <button class="btn-line" id="use-sample">Load “I Married a Broken Soldier” (50 episodes)</button>
         </div>
+        <div class="status-line" id="loaded">Nothing loaded.</div>
+      </div>
 
+      <div class="set-group">
+        <h2>Engine</h2>
+        <div class="row-line">
+          <span class="lbl">Mode</span>
+          <div class="seg" id="mode">
+            <button data-mode="ai" class="on">AI pipeline</button>
+            <button data-mode="baseline">Rule baseline (no key)</button>
+          </div>
+        </div>
         <div id="ai-opts">
-          <div class="row">
-            <label>Provider
-              <select id="provider">
-                <option value="gemini">Google Gemini</option>
-                <option value="openai">OpenAI</option>
-                <option value="openrouter">OpenRouter</option>
-                <option value="groq">Groq</option>
-                <option value="custom">Custom (OpenAI-compatible URL)</option>
-              </select>
-            </label>
-            <label>Speed
-              <select id="profile">
-                <option value="fast">Fast (~3–6 min for 50 eps)</option>
-                <option value="thorough">Thorough (as the official run)</option>
-                <option value="free_tier">Free Gemini key (1 call / 7 s, try ≤5 episodes)</option>
-              </select>
-            </label>
+          <div class="row-line">
+            <label class="lbl" for="provider">Provider</label>
+            <select id="provider">
+              <option value="gemini">Google Gemini</option>
+              <option value="openai">OpenAI</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="groq">Groq</option>
+              <option value="custom">Custom (OpenAI-compatible)</option>
+            </select>
           </div>
-          <label id="baseurl-wrap" hidden>Base URL
-            <input id="baseurl" placeholder="https://your-gateway.example.com/v1/">
-          </label>
-          <label>API key <span class="muted">(stays in this tab; sent only to the provider)</span>
-            <input id="key" type="password" autocomplete="off" placeholder="paste your key">
-          </label>
-          <div class="row">
-            <label>Candidate model <span class="muted">(1 call / episode)</span>
-              <input id="bulk-model">
-            </label>
-            <label>Judge model <span class="muted">(bible, scoring, ranking)</span>
-              <input id="judge-model">
-            </label>
+          <div class="row-line" id="baseurl-wrap" hidden>
+            <label class="lbl" for="baseurl">Base URL</label>
+            <input id="baseurl" placeholder="https://gateway.example.com/v1/">
           </div>
-          <label class="check"><input type="checkbox" id="montage" checked> Also build montage promos (2–3 joined moments)</label>
+          <div class="row-line">
+            <label class="lbl" for="key">API key</label>
+            <input id="key" type="password" autocomplete="off" placeholder="Kept in this tab only">
+          </div>
+          <div class="row-line">
+            <label class="lbl" for="bulk-model">Candidate model</label>
+            <input id="bulk-model" spellcheck="false">
+          </div>
+          <div class="row-line">
+            <label class="lbl" for="judge-model">Judge model</label>
+            <input id="judge-model" spellcheck="false">
+          </div>
+          <div class="row-line">
+            <label class="lbl" for="profile">Speed</label>
+            <select id="profile">
+              <option value="fast">Fast — about 3 min for 50 episodes</option>
+              <option value="thorough">Thorough — the official run's settings</option>
+              <option value="free_tier">Free Gemini key — 1 call / 7 s, use ≤ 5 episodes</option>
+            </select>
+          </div>
+          <div class="row-line">
+            <span class="lbl">Montages</span>
+            <label class="check"><input type="checkbox" id="montage" checked> Also join 2–3 moments into montage promos</label>
+          </div>
         </div>
-
-        <button class="btn primary big" id="run-btn" disabled>Find promos</button>
-        <p class="muted small" id="engine-note">The Python engine (~10 MB, cached after the first visit) loads when you add episodes.</p>
-      </div>
-
-      <div class="card progress" id="progress-card" hidden>
-        <h2>Progress <span class="muted" id="elapsed"></span></h2>
-        <div id="stages"></div>
-        <details><summary>Log</summary><pre id="log"></pre></details>
+        <div class="row-line end">
+          <span class="note" id="engine-note">The Python engine (~10 MB) loads once, then stays cached.</span>
+          <button class="btn-solid big" id="run-btn" disabled>Find promos</button>
+        </div>
       </div>
     </div>
-    <div id="run-view"></div>
-  </section>
 
-  <!-- ============ HOW IT WORKS ============ -->
-  <section id="tab-how" class="panel">
-    <div class="card prose">
-      <h2>The one idea</h2>
-      <p>The model only ever returns <b>line IDs</b> (e.g. <code>E07_L042</code>). Code computes, snaps and checks every
-        timestamp, so a clip can never start mid-sentence or carry an invented time.</p>
-      <pre class="mermaid" id="diagram">flowchart LR
-    IN["Episode<br/>screenplays"] --> P["0 Parse<br/>line IDs + safe cuts"]
-    P --> B["1 Story bible<br/>+ spoiler vote"]
-    P --> C["2 Candidates<br/>3 per episode, IDs only"]
-    B --> C
-    C <--> V{"3 Validate + snap<br/>20-60 s, hook in 3 s,<br/>end on cliffhanger"}
-    V -- "rejected: legal-fix hints" --> C
-    V --> AT["Text attention<br/>first voice, motion,<br/>dead air"]
-    V --> S["4 Rubric score<br/>6 criteria"]
-    S --> R["5 Rank<br/>3 shuffled runs, Borda<br/>+ penalties + quality bar<br/>+ diversity"]
-    AT --> R
-    B -. spoiler episodes .-> R
-    R --> M["6 Montages<br/>2-3 joined moments"]
-    R --> O["7 Ranked promos"]
-    M --> O
-    O --> H["Editor<br/>approve / reject"]
-    classDef ai fill:#efe7fb,stroke:#7b5cc4,color:#2b1d52
-    classDef code fill:#e6f2ea,stroke:#3c8c5a,color:#14361f
-    classDef io fill:#e8f0fb,stroke:#4a72b0,color:#152a4a
-    classDef human fill:#fdf0e1,stroke:#c98a2c,color:#4a2f08
-    class B,C,S,M ai
-    class P,V,AT,R code
-    class IN,O io
-    class H human</pre>
-      <p class="muted small">Purple = AI judgement · green = deterministic code · orange = human.</p>
-      <h2>What is AI, what is code, where the human stays</h2>
-      <table class="tbl">
-        <tr><th>Step</th><th>Done by</th><th>Why</th></tr>
-        <tr><td>Understand the story, propose moments, judge hook / cliffhanger / clarity, rank</td><td>AI</td><td>Needs judgement about drama</td></tr>
-        <tr><td>Timestamps, 20–60 s, hook in 3 s, safe cuts, end on the cliffhanger, no overlap, ≤2 per episode</td><td>Code</td><td>Models cannot do timestamp arithmetic reliably</td></tr>
-        <tr><td>Spoiler episodes</td><td>AI vote (2 of 3) or an editor's fixed list</td><td>The judge's per-clip opinion was unstable</td></tr>
-        <tr><td>Text attention (first voice, motion, close-ups, dead air)</td><td>Code</td><td>A screenplay stand-in for video attention tools</td></tr>
-        <tr><td>Final approval</td><td>Editor</td><td>Approve / Reject on every card, exported as CSV</td></tr>
-      </table>
-      <h2>Swap the model</h2>
-      <p>Any OpenAI-compatible endpoint works (Gemini, OpenAI, OpenRouter, Groq, or a company gateway): pick it in
-        <i>Run on your episodes</i>, or edit <code>config.yaml</code> for the command-line tool.</p>
-      <p><a id="repo-link" href="https://github.com/deltaparticle/Kuku-Assignment" target="_blank" rel="noopener">Source code and run steps on GitHub →</a></p>
+    <div class="progress" id="progress" hidden>
+      <div class="prog-head"><h2>Progress</h2><span class="mono" id="elapsed"></span></div>
+      <div id="stages"></div>
+      <div class="err" id="run-error" hidden></div>
+      <details><summary>Log</summary><pre id="log"></pre></details>
     </div>
-  </section>
-</main>
+  </div>
+</section>
 
-<footer class="muted small">PromoFinder · everything runs in your browser · <a href="https://github.com/deltaparticle/Kuku-Assignment" target="_blank" rel="noopener">GitHub</a></footer>
+<!-- ================= METHOD ================= -->
+<section class="view" id="view-method">
+  <div class="page prose">
+    <p class="kicker">Method</p>
+    <h1>The model names lines. Code does the cutting.</h1>
+    <p class="lede">An editor watches every episode to find the 30 seconds that make a stranger stop scrolling. PromoFinder
+      reads the timestamped screenplay instead and proposes those cuts, ranked by what to post first.</p>
 
-<template id="tpl-card">
-  <article class="promo">
-    <div class="promo-head">
-      <span class="rank"></span>
-      <div class="where"></div>
-      <div class="pills"></div>
+    <h2>What a promo has to be</h2>
+    <p>Taken from the brief: 20–60 seconds, a hook inside the first three seconds, an unresolved moment at the cut, and
+      clear to someone who has never seen the show. It may be one stretch or two or three moments joined in story order.</p>
+
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li><b>Parse.</b> Every screenplay block becomes a line with an ID (<code>E07_L042</code>), a type and its start
+        and end time. A cut is only allowed where no one is speaking and no sound effect is playing.</li>
+      <li><b>Story bible.</b> One model call reads the episode summaries: who is who, which twists sell the show, which
+        payoffs would spoil it. Spoiler episodes are decided by a two-out-of-three vote so they don't flip between runs.</li>
+      <li><b>Candidates.</b> One call per episode proposes three moments — as line IDs only, never times.</li>
+      <li><b>Validate.</b> Code turns IDs into times, keeps the hook inside the first three seconds, ends on the
+        cliffhanger line and checks 20–60 s. Rejected clips go back to the model with the exact lines that would fix them.</li>
+      <li><b>Score.</b> A judge model rates hook, cliffhanger, clarity, intensity, plot relevance and genre fit, quoting
+        its evidence first. A text attention check adds what a video tool would look for: how soon someone speaks,
+        motion, close-ups, dead air.</li>
+      <li><b>Rank.</b> The judge orders the top 40 three times in shuffled order; positions are combined. Code then
+        applies penalties (spoilers, ad policy), a quality bar and a limit of two promos per episode.</li>
+      <li><b>Review.</b> An editor approves or rejects each pick here and exports the list.</li>
+    </ol>
+    <div class="strip" aria-label="Pipeline">
+      <div><span>01</span>Parse<i>code</i></div>
+      <div><span>02</span>Story bible<i>model</i></div>
+      <div><span>03</span>Candidates<i>model</i></div>
+      <div><span>04</span>Validate<i>code</i></div>
+      <div><span>05</span>Score + attention<i>model · code</i></div>
+      <div><span>06</span>Rank<i>model · code</i></div>
+      <div><span>07</span>Review<i>editor</i></div>
     </div>
-    <div class="timeline"></div>
-    <div class="hook"><span class="lbl">Hook</span><q></q></div>
-    <div class="cliff"><span class="lbl">Ends on</span><q></q></div>
-    <p class="question"></p>
-    <p class="why"></p>
-    <p class="ranknote muted small"></p>
-    <div class="metrics"></div>
-    <details class="script"><summary>Script</summary><pre></pre></details>
-    <div class="actions">
-      <button class="btn small approve">✓ Approve</button>
-      <button class="btn small reject">✕ Reject</button>
-      <span class="decision muted small"></span>
-    </div>
-  </article>
-</template>
 
-<script src="app.js"></script>
+    <h2>Who does what</h2>
+    <table class="plain">
+      <tr><th>Model</th><td>Reading the story, proposing moments, judging hooks and cliffhangers, ranking.</td></tr>
+      <tr><th>Code</th><td>Every timestamp, the 20–60 s limit, the 3-second hook, safe cuts, no overlaps, two per episode, the attention check.</td></tr>
+      <tr><th>Editor</th><td>Final approve / reject, exported as a CSV that can be used to tune the weights.</td></tr>
+    </table>
+
+    <h2>What the checks show — and what they don't</h2>
+    <p>On the 50-episode pack: all 32 picks pass the hard rules when re-checked from the saved output; against a
+      keyword-based baseline, a judge model shown both clips blind preferred PromoFinder 13 times, the baseline 4 times,
+      with 5 ties; an independent repeat run chose the same scene for 4 of the top 5.</p>
+    <p>None of that is a human editor's verdict, and none of it proves a clip will perform. The judge is the same model
+      family as the picker, visual hooks are read from text, and screenplay times are assumed to match the video. The
+      real test is a split test on hook rate, hold rate and click-through.</p>
+
+    <h2>Swap the model</h2>
+    <p>Any OpenAI-compatible endpoint works — Gemini, OpenAI, OpenRouter, Groq, or a company gateway. Choose it under
+      <a href="#run" data-view="run">Run</a>, or edit <code>config.yaml</code> for the command-line tool.
+      Source and run steps: <a href="https://github.com/deltaparticle/Kuku-Assignment" target="_blank" rel="noopener">GitHub</a>.</p>
+  </div>
+</section>
+
+<script src="app.js?v=6"></script>
 </body>
 </html>
