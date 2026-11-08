@@ -407,21 +407,20 @@ function setStage(stage, i, n) {
    than this anyway; a run replayed from cache would otherwise flash through every step in under a second. */
 const STEP_MS = 3000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let pq = [], pacing = null;
-function progress(s, i, n) { pq.push([s, i, n]); if (!pacing) pacing = pace(); }
+// One pacer per run. It always waits on a real timer between items, so it can never spin and freeze the page,
+// and it stops once the run has ended and the queue is empty.
+const pacer = { q: [], ended: false };
 async function pace() {
   let cur = null, t0 = 0;
-  while (pq.length) {
-    const [s, i, n] = pq.shift();
+  while (!(pacer.ended && !pacer.q.length)) {
+    if (!pacer.q.length) { await sleep(40); continue; }
+    const [s, i, n] = pacer.q.shift();
     if (!$("#st-" + s)) continue;               // rules-only runs have no stage bars: nothing to pace
     if (s !== cur) { cur = s; t0 = Date.now(); }
-    const due = t0 + (n ? (STEP_MS * i) / n : 0) - Date.now();
-    if (due > 0) await sleep(due);
+    await sleep(Math.max(0, t0 + (n ? (STEP_MS * i) / n : 0) - Date.now()));
     setStage(s, i, n);
   }
-  pacing = null;
 }
-async function paced() { while (pacing) await pacing; }
 const log = (line) => { const l = $("#log"); l.textContent += line + "\n"; l.scrollTop = l.scrollHeight; };
 
 $("#run-btn").addEventListener("click", async () => {
@@ -447,10 +446,13 @@ $("#run-btn").addEventListener("click", async () => {
     const py = await engine();
     const bridge = py.pyimport("bridge");
     await new Promise((r) => setTimeout(r, 50));
-    pq = [];
-    const out = await bridge.run(JSON.stringify(opts), (s, i, n) => progress(s, i, n), (m) => log(m));
+    pacer.q = []; pacer.ended = false;
+    const pacing = pace();
+    let out;
+    try { out = await bridge.run(JSON.stringify(opts), (s, i, n) => pacer.q.push([s, i, n]), (m) => log(m)); }
+    finally { pacer.ended = true; }
+    await pacing;
     const data = JSON.parse(out);
-    await paced();
     const secs = Math.round((Date.now() - t0) / 1000);
     const replay = data.run_log.replayed;
     if (replay) log(`All ${data.run_log.llm.total_calls} model replies came from the cache, recorded from a real run of these files.`);
