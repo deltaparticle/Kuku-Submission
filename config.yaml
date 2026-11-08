@@ -99,7 +99,14 @@ profiles:
       montage: {reasoning_effort: low}
     rules:
       score_passes: 1
-  free_tier:                   # free Gemini keys: one call at a time, 7 s apart (429s seen at 4 s)
-    providers:
-      gemini: {concurrency: 1, min_interval_s: 7}
+  free_tier:                   # free Gemini keys: one call at a time, 7 s apart (429s seen at 4 s), and judges must
+    providers:                 # think less: with full thinking one free-tier judge call took ~5 min, with low ~5 s
+      gemini: {concurrency: 1, min_interval_s: 7, timeout: 90, retries: 2}   # free-tier calls can hang: give up sooner
+    stages:                    # ... and fall back to models that are less overloaded on the free tier
+      bible:   {reasoning_effort: low, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
+      score:   {reasoning_effort: low, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
+      rank:    {reasoning_effort: low, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
+      montage: {reasoning_effort: low, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
+    rules:
+      score_passes: 1
 
