@@ -1,7 +1,7 @@
 """Build the static web app's data files.
 
-  python web/build_site.py                 # package code + sample show + official results (needs the pack + run outputs)
-  python web/build_site.py --package-only  # just re-package the Python code (what the GitHub Pages workflow runs)
+  python scripts/utils/build_site.py                 # package code + sample show + official results (needs the pack + run outputs)
+  python scripts/utils/build_site.py --package-only  # just re-package the Python code (what the GitHub Pages workflow runs)
 
 Writes:
   web/app.zip                    promofinder/ (code + prompts), config.yaml, bridge.py -> unpacked by Pyodide
@@ -16,21 +16,21 @@ import sys
 import zipfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 WEB = ROOT / "web"
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "src"))
 
 PACK = ROOT / "I Married a Broken Soldier. He was a Duke-script"
-OFFICIAL = ROOT / "outputs" / "I_Married_a_Broken_Soldier_He_was_a_Duke_script" / "llm-run-5"
+OFFICIAL = ROOT / "results" / "official-run-C"
 SHOW_NAME = "I Married a Broken Soldier. He was a Duke"
 
 
 def package() -> None:
     out = WEB / "app.zip"
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
-        for f in sorted((ROOT / "promofinder").rglob("*")):
+        for f in sorted((ROOT / "src" / "promofinder").rglob("*")):
             if f.is_file() and "__pycache__" not in f.parts and f.suffix in (".py", ".md"):
-                z.write(f, f.relative_to(ROOT).as_posix())
+                z.write(f, f.relative_to(ROOT / "src").as_posix())
         z.write(ROOT / "config.yaml", "config.yaml")
         z.write(WEB / "bridge.py", "bridge.py")
     print(f"wrote {out} ({out.stat().st_size // 1024} KB)")
@@ -67,7 +67,7 @@ def official() -> None:
             "csv": (OFFICIAL / "promos.csv").read_text(encoding="utf-8-sig"),
             "auto_eval": {k: v for k, v in (auto or {}).items() if k != "run"},
             "run_id": OFFICIAL.name}
-    sys.path.insert(0, str(ROOT / "eval"))
+    sys.path.insert(0, str(ROOT / "scripts" / "eval"))
     import yaml
     from evaluate import rule_checks
     rc = rule_checks(promos["promos"] + promos["montages"], {e.num: e for e in eps},

@@ -1,6 +1,4 @@
 openai>=1.50
 pydantic>=2.5
 PyYAML>=6.0
-streamlit>=1.50
-pandas>=2.0
 pytest>=8.0

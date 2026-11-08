@@ -1,10 +1,10 @@
 """Quality checks for one or more runs.
 
-  python eval/evaluate.py --input "<episodes dir>" --run outputs/<show>/<run1> [--run outputs/<show>/<run2> ...]
-                          [--gold eval/gold.yaml] [--k 10]
+  python scripts/eval/evaluate.py --input "<episodes dir>" --run results/official-run-C [--run ...]
+                                  [--gold gold.yaml] [--k 10]
 
 1) RULE CHECKS (no labels needed) - every promo must satisfy the brief's hard constraints.
-2) GOLD METRICS (needs eval/gold.yaml, labelled BEFORE looking at model output) - see gold_template.yaml.
+2) GOLD METRICS (optional: a gold.yaml of editor-picked spans, labelled BEFORE looking at model output).
    hit@k      a promo in the top k overlaps a gold span of that episode with temporal IoU >= 0.5
    hook-hit   that promo's hook text contains the gold hook phrase
    cliff-hit  that promo's cliffhanger text contains the gold cliffhanger phrase
@@ -19,7 +19,7 @@ from pathlib import Path
 
 import yaml
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from promofinder.parse import load_show  # noqa: E402
 
 
@@ -117,7 +117,7 @@ def main() -> int:
     ap.add_argument("--input", required=True)
     ap.add_argument("--run", action="append", required=True, help="run folder(s) containing promos.json")
     ap.add_argument("--gold", default=str(Path(__file__).with_name("gold.yaml")))
-    ap.add_argument("--config", default=str(Path(__file__).resolve().parents[1] / "config.yaml"))
+    ap.add_argument("--config", default=str(Path(__file__).resolve().parents[2] / "config.yaml"))
     ap.add_argument("--k", type=int, default=10)
     a = ap.parse_args()
 
@@ -125,7 +125,7 @@ def main() -> int:
     eps = {e.num: e for e in load_show(a.input)}
     gold = yaml.safe_load(Path(a.gold).read_text(encoding="utf-8")) if Path(a.gold).exists() else None
     if gold is None:
-        print(f"(no gold file at {a.gold}: running rule checks only. Copy gold_template.yaml -> gold.yaml)\n")
+        print(f"(no gold file at {a.gold}: running rule checks only)\n")
 
     report = {}
     for run in a.run:

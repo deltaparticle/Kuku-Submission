@@ -1,6 +1,6 @@
 """No-human quality checks (used because there is no hand-labelled gold set).
 
-  python eval/auto_eval.py --input "<episodes dir>" --run outputs/<show>/llm-run-2 \
+  python scripts/eval/auto_eval.py --input "<episodes dir>" --run results/official-run-C \
         --baseline outputs/<show>/baseline-test [--prev outputs/<show>/llm-run-1] [--no-judge]
 
 What it measures (all automatic, none of it replaces a human editor):
@@ -26,7 +26,8 @@ from pydantic import BaseModel
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(HERE.parent))
+ROOT = HERE.parents[1]
+sys.path.insert(0, str(ROOT / "src"))
 
 from evaluate import iou, rule_checks  # noqa: E402
 from promofinder.llm import LLM, load_config  # noqa: E402
@@ -138,7 +139,7 @@ def main() -> int:
     ap.add_argument("--run", required=True)
     ap.add_argument("--baseline", required=True)
     ap.add_argument("--prev", default=None)
-    ap.add_argument("--config", default=str(HERE.parent / "config.yaml"))
+    ap.add_argument("--config", default=str(ROOT / "config.yaml"))
     ap.add_argument("--no-judge", action="store_true")
     a = ap.parse_args()
 
@@ -157,7 +158,7 @@ def main() -> int:
         report["agreement_run2_vs_run1"] = agreement(run["promos"], prev["promos"])
         report["agreement_run1_vs_run2"] = agreement(prev["promos"], run["promos"])
     if not a.no_judge:
-        llm = LLM(load_config(a.config), cache_dir=HERE.parent / ".cache")
+        llm = LLM(load_config(a.config), cache_dir=ROOT / ".cache")
         report["blind_ab_pipeline_vs_baseline"] = run_blind_ab(llm, run, base)
         report["judge_models_used"] = llm.summary()["by_stage"].get("eval_judge", {}).get("models_used")
 

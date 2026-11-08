@@ -1,8 +1,8 @@
 """PromoFinder CLI.
 
-  python cli.py run --input "<episodes dir>"                  # full LLM pipeline (needs an API key)
-  python cli.py run --input "<episodes dir>" --no-llm         # rule-based baseline, zero API calls
-  python cli.py run --input ... --config my.yaml --out outputs
+  python scripts/run.py run --input "<episodes dir>"            # full LLM pipeline (needs an API key)
+  python scripts/run.py run --input "<episodes dir>" --no-llm   # rule-based baseline, zero API calls
+  python scripts/run.py check                                   # test the key and the model names in config.yaml
 """
 from __future__ import annotations
 
@@ -12,7 +12,8 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
 
 from promofinder.export import write_all  # noqa: E402
 from promofinder.llm import LLM, load_config  # noqa: E402
@@ -28,7 +29,7 @@ def check(config_path: str) -> int:
         ok: bool
 
     cfg = load_config(config_path)
-    llm = LLM(cfg, cache_dir=Path(__file__).parent / ".cache", use_cache=False)
+    llm = LLM(cfg, cache_dir=ROOT / ".cache", use_cache=False)
     seen, bad = set(), 0
     for stage, s in cfg["stages"].items():
         key = (s["provider"], s["model"])
@@ -60,8 +61,8 @@ def main() -> int:
     r.add_argument("--input", required=True, help="folder of episode .txt screenplays, or one .srt/.vtt subtitle file")
     r.add_argument("--max-minutes", type=float, default=None, help="subtitle input: only use the first N minutes")
     r.add_argument("--part-seconds", type=float, default=150, help="subtitle input: split into parts of ~N seconds")
-    r.add_argument("--config", default=str(Path(__file__).parent / "config.yaml"))
-    r.add_argument("--out", default=str(Path(__file__).parent / "outputs"))
+    r.add_argument("--config", default=str(ROOT / "config.yaml"))
+    r.add_argument("--out", default=str(ROOT / "outputs"))
     r.add_argument("--show", default=None, help="show name (default: input folder name)")
     r.add_argument("--no-llm", action="store_true", help="rule-based baseline only (no API calls)")
     r.add_argument("--no-montage", action="store_true")
@@ -70,10 +71,10 @@ def main() -> int:
                    "e.g. bible,score,rank,montage (keeps the cached candidates)")
     r.add_argument("--run-id", default=None)
     r.add_argument("--profile", default=None, help="fast | thorough (default) | free_tier, see config.yaml")
-    r.add_argument("--cache-dir", default=str(Path(__file__).parent / ".cache"),
+    r.add_argument("--cache-dir", default=str(ROOT / ".cache"),
                    help="model-response cache (use a separate one for an independent repeat run)")
     c = sub.add_parser("check", help="test your API key and the model names in config.yaml")
-    c.add_argument("--config", default=str(Path(__file__).parent / "config.yaml"))
+    c.add_argument("--config", default=str(ROOT / "config.yaml"))
     a = ap.parse_args()
     if a.cmd == "check":
         return check(a.config)

@@ -1,6 +1,6 @@
 """Figure for the 2-page paper. Every number is read from the saved run outputs (or recomputed from them).
 
-  python docs/paper/figures.py   ->  docs/paper/fig_results.pdf
+  python scripts/utils/make_figures.py   ->  docs/paper/fig_results.pdf
 """
 import collections
 import json
@@ -11,10 +11,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = Path(__file__).resolve().parent / "fig_results.pdf"
+OUT = ROOT / "docs" / "paper" / "fig_results.pdf"
 L = lambda p: json.loads((ROOT / p).read_text(encoding="utf-8"))  # noqa: E731
 RUN2 = "outputs/I_Married_a_Broken_Soldier_He_was_a_Duke/llm-run-2"
-RUNC = "raw_outputs/official-run-C"
+RUNC = "results/official-run-C"
 USD_INR = 88.0
 PRICE = {"gemini-3.8-flash": (0.75, 3.75), "gemini-3-flash-preview": (0.50, 3.00)}  # $/1M tokens (in, out incl. thinking)
 
@@ -42,7 +42,7 @@ def agreement(a, b):
 pairs = {"v0": ("outputs/I_Married_a_Broken_Soldier_He_was_a_Duke/llm-run-1/promos.json", RUN2 + "/promos.json"),
          "v1": ("outputs/I_Married_a_Broken_Soldier_He_was_a_Duke_script/llm-run-3/promos.json",
                 "outputs/I_Married_a_Broken_Soldier_He_was_a_Duke_script/llm-run-4/promos.json"),
-         "v2": (RUNC + "/promos.json", "raw_outputs/repeat-run-D/promos.json")}
+         "v2": (RUNC + "/promos.json", "results/repeat-run-D/promos.json")}
 agr = {k: agreement(*v) for k, v in pairs.items()}
 
 hook = {}

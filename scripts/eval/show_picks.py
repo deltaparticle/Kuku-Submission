@@ -1,6 +1,6 @@
 """Print a run's final picks with their script excerpts, for a quick human audit.
 
-  python eval/show_picks.py outputs/<show>/<run-id> [--top 30] [--no-excerpt]
+  python scripts/eval/show_picks.py results/official-run-C [--top 30] [--no-excerpt]
 """
 import argparse
 import json

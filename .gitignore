@@ -1,12 +1,11 @@
 # secrets and caches
 .env
-.streamlit/secrets.toml
 .cache/
 .cache-*/
 __pycache__/
 *.pyc
 
-# working data (the official raw outputs are copied into raw_outputs/)
+# working data (the official runs are copied into results/)
 outputs/
 episodes/
 _subset/
@@ -20,3 +19,9 @@ private/
 
 # built in CI
 web/app.zip
+
+# LaTeX build files (the compiled report is PromoFinder.pdf at the root)
+docs/paper/*.aux
+docs/paper/*.log
+docs/paper/*.out
+docs/paper/promofinder.pdf

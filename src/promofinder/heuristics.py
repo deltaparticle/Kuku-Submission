@@ -3,7 +3,7 @@
 Scans each episode for windows that (a) open on a strong line within 3s and (b) end on an
 unresolved-sounding line. Pure rules, zero API calls. Used for two things:
   1. recall safety-net, so an LLM miss does not lose a great moment
-  2. the baseline we compare the full pipeline against in eval/
+  2. the baseline we compare the full pipeline against (scripts/eval/)
 """
 from __future__ import annotations
 

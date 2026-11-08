@@ -35,7 +35,7 @@ IN_BROWSER = sys.platform == "emscripten"
 
 def load_env_file(path: str | Path | None = None) -> None:
     """Load KEY=VALUE lines from <project>/.env into os.environ (without overriding real env vars)."""
-    p = Path(path) if path else Path(__file__).resolve().parents[1] / ".env"
+    p = Path(path) if path else Path(__file__).resolve().parents[2] / ".env"
     try:
         if not p.exists():
             return

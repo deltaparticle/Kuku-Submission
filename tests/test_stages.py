@@ -56,7 +56,7 @@ def test_final_order_applies_bible_spoilers_and_prefers_early_episodes(eps, rule
 def test_eval_pass_rate_counts_promos_not_failures(eps):
     import sys
     from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eval"))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "eval"))
     from evaluate import rule_checks
     em = {e.num: e for e in eps}
     good = {"pid": "P1", "duration": 30, "hook_line_id": "E01_L002",

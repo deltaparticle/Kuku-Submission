@@ -26,7 +26,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Package the Python pipeline for the browser
-        run: python web/build_site.py --package-only
+        run: python scripts/utils/build_site.py --package-only
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

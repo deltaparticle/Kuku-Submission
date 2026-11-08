@@ -13,8 +13,8 @@ flowchart TD
     end
 
     subgraph UI["ENTRY POINTS"]
-        CLI["cli.py<br/>check: 1 ping per model, lists valid models<br/>run: --no-llm, --no-montage, --no-cache,<br/>--fresh-stages, --cache-dir, --run-id"]
-        APP["app.py (Streamlit)<br/>zip upload or folder path<br/>provider + bulk/judge model swap<br/>(swap drops stale fallbacks)<br/>Approve / Reject per promo"]
+        CLI["scripts/run.py<br/>check: 1 ping per model, lists valid models<br/>run: --no-llm, --profile, --no-montage,<br/>--fresh-stages, --cache-dir, --run-id"]
+        APP["web/ (static site, Pyodide)<br/>zip, .txt or .srt upload<br/>provider + model swap, speed profile<br/>review desk: Approve / Reject per promo"]
     end
 
 
@@ -108,12 +108,12 @@ flowchart TD
     end
 
     subgraph HUM["HUMAN IN THE LOOP"]
-        ED["Editor reviews ranked cards in app.py<br/>Approve / Reject -> promos_with_feedback.csv"]
+        ED["Editor reviews ranked picks in the web review desk<br/>Approve / Reject -> promos_with_approvals.csv"]
         TUNE["Future: tune score weights per genre;<br/>live A/B on hook rate, hold rate, CTR, CPI"]
         ED --> TUNE
     end
 
-    subgraph EV["EVALUATION (eval/)"]
+    subgraph EV["EVALUATION (scripts/eval/)"]
         EV1["evaluate.py: hard-rule re-check on saved output<br/>(duration, safe cuts, hook window, overlap,<br/>per-episode cap) + gold hit@k if labelled"]
         EV2["auto_eval.py: run-to-run agreement (IoU >= 0.5),<br/>blind A/B vs baseline (both orders)"]
         EV3["show_picks.py: picks with excerpts for audit"]
