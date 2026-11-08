@@ -20,14 +20,55 @@ const toSec = (ts) => { const [m, s] = String(ts).split(":"); return (+m) * 60 +
 const tc = (sec) => `${pad(Math.floor(sec / 60))}:${(sec % 60).toFixed(2).padStart(5, "0")}`;
 
 /* ---------------- views ---------------- */
+const VIEWS = ["home", "review", "run", "method"];
 function show(view) {
+  if (!VIEWS.includes(view)) view = "home";
+  const was = document.body.dataset.view;
+  document.body.dataset.view = view;
   $$(".view").forEach((v) => v.classList.toggle("on", v.id === "view-" + view));
-  $$(".nav a").forEach((a) => a.classList.toggle("on", a.dataset.view === view));
-  $("#export").style.visibility = view === "review" ? "visible" : "hidden";
+  $$(".nav-links a[data-view]").forEach((a) => a.classList.toggle("on", a.dataset.view === view));
+  pillTo($(".nav-links a.on"));
   if (view === "run") engine();
+  if (was && was !== view) window.scrollTo({ top: 0 });
   if (location.hash !== "#" + view) history.replaceState(null, "", "#" + view);
 }
 $$("[data-view]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); show(a.dataset.view); }));
+
+/* floating nav: a pill that springs to the hovered link and settles back on the current one */
+function pillTo(a) {
+  const pill = $("#nav-pill");
+  if (!a || !a.offsetWidth) { pill.style.opacity = 0; return; }
+  pill.style.opacity = 1;
+  pill.style.width = a.offsetWidth + "px";
+  pill.style.transform = `translateX(${a.offsetLeft}px)`;
+}
+$$(".nav-links a").forEach((a) => a.addEventListener("mouseenter", () => pillTo(a)));
+$("#nav-links").addEventListener("mouseleave", () => pillTo($(".nav-links a.on")));
+window.addEventListener("resize", () => pillTo($(".nav-links a.on")));
+document.fonts && document.fonts.ready.then(() => pillTo($(".nav-links a.on")));
+
+/* footer clock: the builder's time zone */
+function clock() {
+  const t = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
+  $("#clock").textContent = `${t} IST · made in India`;
+}
+clock(); setInterval(clock, 30000);
+
+/* landing: the real #1 pick from the official run */
+function heroSample(data) {
+  const p = data.promos && data.promos[0];
+  if (!p) return;
+  const s = p.segments[0], e = p.segments[p.segments.length - 1];
+  const D = (data.episode_durations || {})[s.episode] || (data.episode_durations || {})[String(s.episode)] || s.end;
+  $("#hs-rank").textContent = "#" + p.rank;
+  $("#hs-where").textContent = `E${pad(s.episode)} · ${s.start_ts} → ${e.end_ts} · ${Math.round(p.duration)} s`;
+  $("#hs-hook").textContent = "“" + lineText(p.hook) + "”";
+  $("#hs-ends").textContent = "“" + lineText(p.cliffhanger) + "”";
+  $("#hs-q").textContent = p.open_question ? "leaves you asking: " + p.open_question : "";
+  const bar = $("#hs-bar");
+  bar.style.left = (100 * s.start) / D + "%";
+  requestAnimationFrame(() => { bar.style.width = (100 * (e.end - s.start)) / D + "%"; });
+}
 
 /* ---------------- state ---------------- */
 const S = { data: null, runId: "", label: "", filter: "all", sel: null, decisions: {}, official: null };
@@ -96,7 +137,7 @@ function drawList() {
         <div class="line1">${esc(lineText(p.hook))}</div></div>
       <div class="side"><span class="score">${Math.round(p.duration)}s</span>${w ? `<span class="warn">!</span> ` : ""}<span class="state ${d}"></span></div>
     </li>`;
-  }).join("") || `<li class="none">No promos match.</li>`;
+  }).join("") || `<li class="none">Nothing matches that. Try fewer words, or clear the search.</li>`;
   $$(".row", ol).forEach((li) => li.addEventListener("click", () => select(li.dataset.pid)));
 }
 $$("#filters button").forEach((b) => b.addEventListener("click", () => {
@@ -266,8 +307,9 @@ $$("#export-menu button").forEach((b) => b.addEventListener("click", () => {
     const data = await (await fetch("data/official.json")).json();
     S.official = data;
     loadDataset(data, "official-" + data.run_id, "Official run");
+    heroSample(data);
   } catch (e) {
-    $("#show-title").textContent = "Could not load the official results";
+    $("#show-title").textContent = "The official picks didn't load. A refresh usually fixes it.";
     $("#run-title").textContent = String(e);
   }
 })();
@@ -305,7 +347,6 @@ function providerDefaults() {
   const p = $("#provider").value;
   $("#bulk-model").value = DEFAULTS[p].bulk;
   $("#judge-model").value = DEFAULTS[p].judge;
-  $("#bulk-model").placeholder = $("#judge-model").placeholder = DEFAULTS[p].bulk ? "" : "Model name";
   $("#baseurl-wrap").hidden = p !== "custom";
 }
 $("#provider").addEventListener("change", providerDefaults);
@@ -326,7 +367,7 @@ async function loadEpisodes(files, showName) {
     st.textContent = `${info.show} — ${info.episodes} ${info.episodes === 1 ? "part" : "episodes"} · ${info.lines} lines · ${info.minutes} min`;
     $("#run-btn").disabled = false;
   } catch (e) {
-    st.className = "status-line bad"; st.textContent = "Could not read the files: " + (e.message || e);
+    st.className = "status-line bad"; st.textContent = "Couldn't read those files (" + (e.message || e) + "). A .zip of .txt screenplays or one .srt file works best.";
   }
 }
 const drop = $("#drop");
@@ -356,11 +397,11 @@ $("#run-btn").addEventListener("click", async () => {
   const opts = { use_llm: useLlm, provider, key: $("#key").value.trim(), base_url: $("#baseurl").value.trim(),
     bulk_model: $("#bulk-model").value.trim(), judge_model: $("#judge-model").value.trim(), profile: $("#profile").value, montage: $("#montage").checked };
   const err = $("#run-error");
-  const fail = (m) => { $("#progress").hidden = false; err.hidden = false; err.textContent = m; };
+  const fail = (m) => { err.hidden = false; err.textContent = m; };
   err.hidden = true;
-  if (useLlm && !opts.key) return fail("Add an API key, or switch to the rule baseline.");
-  if (useLlm && (!opts.bulk_model || !opts.judge_model)) return fail("Enter a candidate model and a judge model for this provider.");
-  if (useLlm && provider === "custom" && !opts.base_url) return fail("Enter the base URL of your OpenAI-compatible endpoint.");
+  if (useLlm && !opts.key) return fail("Add an API key, or switch to “Rules only” to run without one.");
+  if (useLlm && (!opts.bulk_model || !opts.judge_model)) return fail("This provider needs two model names: one that proposes clips and one that judges them.");
+  if (useLlm && provider === "custom" && !opts.base_url) return fail("Add the base URL of your endpoint, usually ending in /v1/.");
   const btn = $("#run-btn");
   btn.disabled = true; btn.textContent = "Running…";
   $("#progress").hidden = false; $("#log").textContent = "";
@@ -387,9 +428,10 @@ $("#run-btn").addEventListener("click", async () => {
     log("ERROR: " + e);
   } finally {
     clearInterval(timer);
-    btn.disabled = false; btn.textContent = "Find promos";
+    btn.disabled = false; btn.textContent = "Find the promos";
   }
 });
 
 /* ---------------- start ---------------- */
-show((location.hash || "#review").slice(1).replace(/[^a-z]/g, "") || "review");
+show((location.hash || "#home").slice(1).replace(/[^a-z]/g, "") || "home");
+window.addEventListener("hashchange", () => show(location.hash.slice(1).replace(/[^a-z]/g, "")));
