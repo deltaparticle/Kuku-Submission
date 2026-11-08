@@ -129,6 +129,7 @@ class LLM:
         self.api_keys = api_keys or {}  # provider name -> key (UI "bring your own key")
         self.use_cache = use_cache
         self.fresh_stages = set(fresh_stages or ())  # stages that must NOT read the cache (they still write it)
+        self._skip: set[str] = set()  # models that hung or stayed overloaded through every attempt in THIS run
         self.calls: list[dict] = []
         self.log = log or (lambda msg: print(msg, flush=True))
         self._clients: dict[str, Any] = {}
@@ -208,10 +209,28 @@ class LLM:
             from pyodide.http import pyfetch  # type: ignore
 
             url = pcfg["base_url"].rstrip("/") + "/chat/completions"
-            r = await pyfetch(url, method="POST", body=json.dumps(kwargs),
-                              headers={"Content-Type": "application/json",
-                                       "Authorization": f"Bearer {self._api_key(prov, pcfg)}"})
-            body = await r.string()
+            limit = float(pcfg.get("timeout", 90))
+            opts: dict[str, Any] = {}
+            try:  # abort the request itself, so a hung call does not keep a connection open
+                from js import AbortSignal  # type: ignore
+                opts["signal"] = AbortSignal.timeout(int(limit * 1000))
+            except Exception:  # noqa: BLE001 - older browsers: asyncio.wait_for below still stops waiting
+                pass
+
+            async def go():
+                r = await pyfetch(url, method="POST", body=json.dumps(kwargs),
+                                  headers={"Content-Type": "application/json",
+                                           "Authorization": f"Bearer {self._api_key(prov, pcfg)}"}, **opts)
+                return r, await r.string()
+
+            try:
+                r, body = await asyncio.wait_for(go(), timeout=limit + 2)
+            except asyncio.TimeoutError as e:
+                raise HTTPError(None, f"request timed out after {limit:.0f} s") from e
+            except Exception as e:  # noqa: BLE001
+                if "abort" in str(e).lower() or "timed out" in str(e).lower() or "timeout" in str(e).lower():
+                    raise HTTPError(None, f"request timed out after {limit:.0f} s") from e
+                raise
             if r.status != 200:
                 raise HTTPError(r.status, f"HTTP {r.status}: {body[:600]}")
             d = json.loads(body)
@@ -241,8 +260,8 @@ class LLM:
         per_model = int(pcfg.get("retries", 3))
         last_err: Exception | None = None
         for mi, model in enumerate(models):
-            if model in self._dead and mi < len(models) - 1:
-                continue  # daily quota already used up: don't waste time on it
+            if (model in self._dead or model in self._skip) and mi < len(models) - 1:
+                continue  # daily quota used up, or it hung / stayed overloaded earlier in this run
             kwargs: dict[str, Any] = dict(model=model, messages=messages, temperature=temperature)
             if json_mode and pcfg.get("json_mode", True):
                 kwargs["response_format"] = {"type": "json_object"}
@@ -250,6 +269,9 @@ class LLM:
                 kwargs["reasoning_effort"] = effort  # caps hidden "thinking" tokens, which are billed as output
             for attempt in range(per_model):
                 sem = await self._slot(prov, pcfg)
+                if model in self._skip and mi < len(models) - 1:
+                    sem.release()  # another call found this model stuck while we were queued: don't wait on it too
+                    break
                 t0 = time.time()
                 try:
                     text, pt, ct, tt = await self._transport(prov, pcfg, kwargs)
@@ -291,7 +313,11 @@ class LLM:
                                  or cls in ("APIConnectionError", "APITimeoutError"))
                     if not retryable:
                         raise
-                    last_try = attempt == per_model - 1
+                    timed_out = ("timed out" in msg or "timeout" in msg
+                                 or cls in ("APITimeoutError", "TimeoutError", "ReadTimeout"))
+                    last_try = attempt == per_model - 1 or (timed_out and mi < len(models) - 1)
+                    if last_try and mi < len(models) - 1:
+                        self._skip.add(model)  # don't make later calls in this run wait on it again
                     nxt = " -> switching model" if (last_try and mi < len(models) - 1) else ""
                     delay = 0 if last_try else min(30, 3 * 2 ** attempt)
                     if status == 429 and not last_try:
@@ -301,6 +327,8 @@ class LLM:
                     why = (cls if status is None else f"HTTP {status}")
                     self.log(f"  [llm] {stage}: {model} busy/limited ({why}); attempt {attempt + 1}/{per_model}"
                              + (f", retry in {delay:.0f}s" if delay else "") + nxt)
+                    if last_try:
+                        break
                     if delay:
                         await asyncio.sleep(delay)
                 finally:

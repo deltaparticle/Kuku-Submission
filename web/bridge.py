@@ -72,7 +72,7 @@ def _configure(opts: dict) -> dict:
     pc.setdefault("concurrency", 6)
     pc.setdefault("min_interval_s", 0.3)
     pc.setdefault("retries", 3)
-    pc["timeout"] = 300
+    pc.setdefault("timeout", 300)
     picks = {"candidates": (opts.get("bulk_model") or "").strip()}
     for s in JUDGE_STAGES:
         picks[s] = (opts.get("judge_model") or "").strip()

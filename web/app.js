@@ -6,7 +6,9 @@
 const PYODIDE_URL = "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/";
 const DEFAULTS = {
   gemini: { bulk: "gemini-3-flash-preview", judge: "gemini-3.8-flash" },
-  openai: { bulk: "", judge: "" }, openrouter: { bulk: "", judge: "" }, groq: { bulk: "", judge: "" }, custom: { bulk: "", judge: "" },
+  openai: { bulk: "", judge: "" },
+  // free on OpenRouter (tested 9 Nov 2026: 2 episodes in ~12 min); the judge is the larger model
+  openrouter: { bulk: "nvidia/nemotron-3.5-super-vl:free", judge: "nvidia/nemotron-3-ultra-550b-a55b:free" }, groq: { bulk: "", judge: "" }, custom: { bulk: "", judge: "" },
 };
 const STAGES = [["bible", "Story bible"], ["candidates", "Candidate clips"], ["score", "Scoring"], ["rank", "Ranking"], ["montage", "Montages"]];
 const SCORE_NAMES = [["hook_3s", "Hook, first 3 s"], ["cliffhanger", "Cliffhanger"], ["standalone", "Makes sense alone"],
