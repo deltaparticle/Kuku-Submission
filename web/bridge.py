@@ -15,6 +15,7 @@ from pathlib import Path
 from promofinder.export import payload
 from promofinder.llm import LLM, load_config
 from promofinder.parse import load_show
+from promofinder.subtitles import SUBTITLE_EXT, load_subtitles
 from promofinder.pipeline import arun
 
 APP = Path(__file__).resolve().parent
@@ -24,8 +25,9 @@ STATE = {"eps": [], "show": "show"}
 JUDGE_STAGES = ("bible", "score", "rank", "montage")
 
 
-def load_files(files) -> str:
-    """files: list of (filename, bytes). Accepts .zip archives and .txt screenplays."""
+def load_files(files, max_minutes: float = 10) -> str:
+    """files: list of (filename, bytes). Accepts .zip archives, .txt screenplays, or one .srt/.vtt subtitle file
+    (first `max_minutes` minutes, split into ~2.5-minute parts)."""
     shutil.rmtree(WORK, ignore_errors=True)
     WORK.mkdir(parents=True)
     names = []
@@ -36,13 +38,18 @@ def load_files(files) -> str:
             with zipfile.ZipFile(io.BytesIO(data)) as z:
                 z.extractall(WORK)
             names.append(name)
-        elif low.endswith(".txt"):
+        elif low.endswith(".txt") or low.endswith(SUBTITLE_EXT):
             (WORK / Path(name).name).write_bytes(data)
             names.append(name)
-    eps = load_show(WORK)
+    subs = sorted(f for f in WORK.rglob("*") if f.suffix.lower() in SUBTITLE_EXT)
+    if subs:
+        eps = load_subtitles(subs[0], max_seconds=max_minutes * 60 if max_minutes else None, show=subs[0].stem)
+    else:
+        eps = load_show(WORK)
     STATE["eps"] = eps
     first = names[0] if names else "show"
-    STATE["show"] = Path(first).stem if len(names) == 1 and first.lower().endswith(".zip") else "Uploaded show"
+    STATE["show"] = (Path(first).stem if len(names) == 1 and first.lower().endswith((".zip",) + SUBTITLE_EXT)
+                     else "Uploaded show")
     return json.dumps({
         "episodes": len(eps), "lines": sum(len(e.lines) for e in eps),
         "first": eps[0].num if eps else None, "last": eps[-1].num if eps else None,

@@ -57,7 +57,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(prog="promofinder")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="find and rank promos")
-    r.add_argument("--input", required=True, help="folder containing episode .txt screenplays")
+    r.add_argument("--input", required=True, help="folder of episode .txt screenplays, or one .srt/.vtt subtitle file")
+    r.add_argument("--max-minutes", type=float, default=None, help="subtitle input: only use the first N minutes")
+    r.add_argument("--part-seconds", type=float, default=150, help="subtitle input: split into parts of ~N seconds")
     r.add_argument("--config", default=str(Path(__file__).parent / "config.yaml"))
     r.add_argument("--out", default=str(Path(__file__).parent / "outputs"))
     r.add_argument("--show", default=None, help="show name (default: input folder name)")
@@ -77,7 +79,12 @@ def main() -> int:
         return check(a.config)
 
     cfg = load_config(a.config, a.profile)
-    eps = load_show(a.input)
+    if Path(a.input).suffix.lower() in (".srt", ".vtt"):
+        from promofinder.subtitles import load_subtitles
+        eps = load_subtitles(a.input, max_seconds=a.max_minutes * 60 if a.max_minutes else None,
+                             part_seconds=a.part_seconds, show=a.show)
+    else:
+        eps = load_show(a.input)
     if not eps:
         print(f"No episode .txt files found under {a.input}", file=sys.stderr)
         return 2
