@@ -138,7 +138,10 @@ function drawList() {
       <div class="side"><span class="score">${Math.round(p.duration)}s</span>${w ? `<span class="warn">!</span> ` : ""}<span class="state ${d}"></span></div>
     </li>`;
   }).join("") || `<li class="none">Nothing matches that. Try fewer words, or clear the search.</li>`;
-  $$(".row", ol).forEach((li) => li.addEventListener("click", () => select(li.dataset.pid)));
+  $$(".row", ol).forEach((li) => li.addEventListener("click", () => {
+    select(li.dataset.pid);
+    if (narrow()) $("#detail").scrollIntoView({ behavior: "smooth", block: "start" });
+  }));
 }
 $$("#filters button").forEach((b) => b.addEventListener("click", () => {
   S.filter = b.dataset.f;
@@ -161,8 +164,12 @@ function parseExcerpt(ex) {
 function select(pid) {
   S.sel = pid;
   $$(".row").forEach((r) => r.classList.toggle("sel", r.dataset.pid === pid));
-  const li = $(`.row[data-pid="${pid}"]`);
-  if (li) li.scrollIntoView({ block: "nearest" });
+  const li = $(`.row[data-pid="${pid}"]`), rows = $("#rows");
+  if (li && rows.scrollHeight > rows.clientHeight) {   // keep the row visible inside the list only; never move the page
+    const top = li.offsetTop - 6, bot = li.offsetTop + li.offsetHeight + 6;
+    if (top < rows.scrollTop) rows.scrollTop = top;
+    else if (bot > rows.scrollTop + rows.clientHeight) rows.scrollTop = bot - rows.clientHeight;
+  }
   const p = allPromos().find((x) => x.pid === pid);
   if (p) drawDetail(p);
   tally();
@@ -231,7 +238,13 @@ function drawDetail(p) {
         ${p.score_note && p.score_note !== "none" ? `<h3 class="sec-h">Judge's main doubt</h3><p>${esc(p.score_note)}</p>` : ""}
       </div>
     </div>`;
-  $("#detail").scrollTop = 0;
+  toDetailTop();
+}
+const narrow = () => matchMedia("(max-width: 900px)").matches;
+function toDetailTop() {   // a new clip starts at its title; the list keeps its place
+  if (narrow() || !$("#view-review").classList.contains("on")) return;
+  const y = $(".desk").getBoundingClientRect().top + scrollY - $(".nav-wrap").offsetHeight - 4;
+  if (scrollY > y) window.scrollTo({ top: y });
 }
 function drawRejected() {
   const rej = S.data.rejected || [];
