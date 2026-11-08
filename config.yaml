@@ -27,13 +27,13 @@ providers:
 # gemini-2.5-flash is 404. Strong flash models allow only ~20 requests/day on the free tier: keep them for the few-call stages.
 # Many-call stages (candidates: 1 call per episode) run on the lite model; few-call stages use the stronger model.
 stages:
-  bible:      {provider: gemini, model: gemini-3.8-flash, temperature: 0.0, fallback_models: [gemini-3.7-flash]}
+  bible:      {provider: gemini, model: gemini-3.8-flash, temperature: 0.0, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
   # candidates: reasoning_effort low is essential: by default this model "thought" ~63k billed tokens on ONE episode
   # (~Rs 17); with low it used 0 and still found the key scenes (tested 8 Nov on ep 3).
   candidates: {provider: gemini, model: gemini-3-flash-preview, temperature: 0.0, reasoning_effort: low, fallback_models: [gemini-3.5-flash-lite]}
-  score:      {provider: gemini, model: gemini-3.8-flash, temperature: 0.0, fallback_models: [gemini-3.7-flash]}
-  rank:       {provider: gemini, model: gemini-3.8-flash, temperature: 0.0, fallback_models: [gemini-3.7-flash]}
-  montage:    {provider: gemini, model: gemini-3.8-flash, temperature: 0.2, fallback_models: [gemini-3.7-flash]}
+  score:      {provider: gemini, model: gemini-3.8-flash, temperature: 0.0, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
+  rank:       {provider: gemini, model: gemini-3.8-flash, temperature: 0.0, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
+  montage:    {provider: gemini, model: gemini-3.8-flash, temperature: 0.2, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
   eval_judge: {provider: gemini, model: gemini-3.1-flash-lite, temperature: 0.0, fallback_models: [gemini-3.5-flash-lite, gemini-3-flash-preview, gemini-3.6-flash]}
 
 # Deterministic rules (code, not LLM)

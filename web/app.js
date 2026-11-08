@@ -459,9 +459,14 @@ $("#run-btn").addEventListener("click", async () => {
     loadDataset(data, "run-" + t0, label);
     show("review");
   } catch (e) {
-    const lines = String(e.message || e).split("\n").filter(Boolean);
+    const txt = String(e.message || e), lines = txt.split("\n").filter(Boolean);
     const fatal = lines.filter((l) => /FatalProviderError: /.test(l)).pop();
-    fail(fatal ? fatal.replace(/^.*FatalProviderError:\s*/, "") : "The run stopped: " + lines.slice(-2).join(" "));
+    // otherwise show the provider's own message (e.g. "This model is currently experiencing high demand"),
+    // or the last Python error line, never a scrap of JSON
+    const said = [...txt.matchAll(/"message":\s*"([^"]{8,})"/g)].map((m) => m[1]).pop();
+    const pyErr = lines.filter((l) => /^\w+(Error|Exception): /.test(l.trim())).pop();
+    fail(fatal ? fatal.replace(/^.*FatalProviderError:\s*/, "")
+      : "The run stopped. " + (said ? `The provider said: ${said}` : pyErr ? pyErr.trim().slice(0, 300) : lines.slice(-1)[0]));
     log("ERROR: " + e);
   } finally {
     clearInterval(timer);
