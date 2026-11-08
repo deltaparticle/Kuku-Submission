@@ -3,7 +3,7 @@
  * so they follow any layout change. Clicking a box opens its panel. Below 760 px the grid becomes one column,
  * the arrows become simple down-ticks, and the panel opens directly under the clicked box. */
 (() => {
-  const GH = "https://github.com/deltaparticle/Kuku-Assignment/blob/main/";
+  const GH = "https://github.com/deltaparticle/Kuku-Submission/blob/main/";
   const src = (path, label) => `<a href="${GH}${path}" target="_blank" rel="noopener">${label || path.split("/").pop()}</a>`;
   const ROLE = { model: "Model", code: "Code", editor: "Editor", input: "Input" };
 

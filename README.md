@@ -9,7 +9,7 @@ One rule shapes the design: **the language model may only name script line IDs; 
 enforces every rule.** Models asked for timestamps directly get the arithmetic wrong and cut mid-sentence. With line IDs,
 every cut is computed, and it lands where nobody is speaking.
 
-* **Live app:** https://deltaparticle.github.io/Kuku-Assignment/ (review the official results, or run it on your own episodes in the browser)
+* **Live app:** https://deltaparticle.github.io/Kuku-Submission/ (review the official results, or run it on your own episodes in the browser)
 * **Report (2 pages):** [SnipDeck.pdf](SnipDeck.pdf)
 
 ---
