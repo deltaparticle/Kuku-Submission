@@ -1,7 +1,7 @@
 import pytest
 
-from promofinder.schemas import RawCandidate
-from promofinder.validate import Invalid, build_single
+from snipdeck.schemas import RawCandidate
+from snipdeck.validate import Invalid, build_single
 
 
 def cand(**kw):
@@ -119,7 +119,7 @@ def test_clip_ends_on_the_cliffhanger_not_on_later_dialogue(eps, rules):
 
 
 def test_episode_ids_with_three_digits():
-    from promofinder.validate import ep_of_id
+    from snipdeck.validate import ep_of_id
     assert ep_of_id("E100_L001") == 100 and ep_of_id("E07_L012") == 7
     with pytest.raises(Invalid):
         ep_of_id("E7-12")

@@ -1,4 +1,4 @@
-# PromoFinder config. To swap a model, change provider/model for a stage - no code changes.
+# SnipDeck config. To swap a model, change provider/model for a stage - no code changes.
 # All providers are OpenAI-compatible endpoints. Model names change often: check the provider's
 # model list / rate-limit page before a run (free-tier quotas are not guaranteed).
 

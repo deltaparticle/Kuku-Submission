@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PromoFinder — promo picks for microdrama</title>
+  <title>SnipDeck — promo picks for microdrama</title>
   <meta name="description" content="Reads a timestamped microdrama screenplay and returns ranked 20–60 s promo clips: hook in the first 3 s, cliffhanger at the cut, makes sense alone.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <header class="bar">
-  <a class="wordmark" href="#review" data-view="review">PromoFinder</a>
+  <a class="wordmark" href="#review" data-view="review">SnipDeck</a>
   <nav class="nav">
     <a href="#review" data-view="review" class="on">Review</a>
     <a href="#run" data-view="run">Run</a>
@@ -173,7 +173,7 @@
   <div class="page prose">
     <p class="kicker">Method</p>
     <h1>The model names lines. Code does the cutting.</h1>
-    <p class="lede">An editor watches every episode to find the 30 seconds that make a stranger stop scrolling. PromoFinder
+    <p class="lede">An editor watches every episode to find the 30 seconds that make a stranger stop scrolling. SnipDeck
       reads the timestamped screenplay instead and proposes those cuts, ranked by what to post first.</p>
 
     <h2>What a promo has to be</h2>
@@ -215,7 +215,7 @@
 
     <h2>What the checks show — and what they don't</h2>
     <p>On the 50-episode pack: all 32 picks pass the hard rules when re-checked from the saved output; against a
-      keyword-based baseline, a judge model shown both clips blind preferred PromoFinder 13 times, the baseline 4 times,
+      keyword-based baseline, a judge model shown both clips blind preferred SnipDeck 13 times, the baseline 4 times,
       with 5 ties; an independent repeat run chose the same scene for 4 of the top 5.</p>
     <p>None of that is a human editor's verdict, and none of it proves a clip will perform. The judge is the same model
       family as the picker, visual hooks are read from text, and screenplay times are assumed to match the video. The
@@ -228,6 +228,6 @@
   </div>
 </section>
 
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

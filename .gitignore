@@ -20,8 +20,8 @@ private/
 # built in CI
 web/app.zip
 
-# LaTeX build files (the compiled report is PromoFinder.pdf at the root)
+# LaTeX build files (the compiled report is SnipDeck.pdf at the root)
 docs/paper/*.aux
 docs/paper/*.log
 docs/paper/*.out
-docs/paper/promofinder.pdf
+docs/paper/snipdeck.pdf

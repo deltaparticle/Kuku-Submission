@@ -18,13 +18,13 @@
 
 \begin{document}
 \begin{center}
-{\Large\bfseries PromoFinder: finding promos in microdrama screenplays}\\[4pt]
+{\Large\bfseries SnipDeck: finding promos in microdrama screenplays}\\[4pt]
 Sumit Prabhakar \textperiodcentered{} Kuku AI Generalist Assignment, Problem 1\\[1pt]
 {\small App: \href{https://deltaparticle.github.io/Kuku-Assignment/}{\texttt{deltaparticle.github.io/Kuku-Assignment}}
 \quad Code and raw outputs: \href{https://github.com/deltaparticle/Kuku-Assignment}{\texttt{github.com/deltaparticle/Kuku-Assignment}}}
 \end{center}
 
-\textbf{Summary.} PromoFinder reads a timestamped screenplay and returns ranked 20--60\,s promo clips: a hook in the
+\textbf{Summary.} SnipDeck reads a timestamped screenplay and returns ranked 20--60\,s promo clips: a hook in the
 first 3\,s, an unresolved cut, and clear to a stranger. The key decision: \emph{the model may only name script line IDs;
 code computes every timestamp and enforces every rule.} On the 50-episode pack it returns 30 promos + 2 montages,
 all passing the hard rules; a blind judge prefers it to a keyword baseline 13--4. It runs on Gemini's free models, and

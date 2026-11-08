@@ -1,9 +1,9 @@
 """Deterministic stand-in for LLM so the pipeline wiring can be tested without an API key."""
 import re
 
-from promofinder.heuristics import propose
-from promofinder.schemas import (CandidateBatch, MontageBatch, RankItem, RankResult, ScoreBatch, ScoreItem)
-from promofinder.stages import Bible
+from snipdeck.heuristics import propose
+from snipdeck.schemas import (CandidateBatch, MontageBatch, RankItem, RankResult, ScoreBatch, ScoreItem)
+from snipdeck.stages import Bible
 
 
 class FakeLLM:

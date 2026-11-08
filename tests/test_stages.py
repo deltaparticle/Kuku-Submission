@@ -1,8 +1,8 @@
 """Stage logic that needs no network: repair loop, bible-driven spoilers, ranking penalties, eval pass rate."""
-from promofinder import stages as S
-from promofinder.llm import run_sync
-from promofinder.schemas import CandidateBatch, RawCandidate
-from promofinder.stages import Bible
+from snipdeck import stages as S
+from snipdeck.llm import run_sync
+from snipdeck.schemas import CandidateBatch, RawCandidate
+from snipdeck.stages import Bible
 
 
 class RepairLLM:
@@ -37,7 +37,7 @@ def test_late_payoff_episodes_from_structured_and_free_text_bible():
 
 
 def test_final_order_applies_bible_spoilers_and_prefers_early_episodes(eps, rules):
-    from promofinder.validate import build_single
+    from snipdeck.validate import build_single
     em = {e.num: e for e in eps}
     c = dict(episode=1, start_line="E01_L002", end_line="E01_L013", hook_line="E01_L002", cliffhanger_line="E01_L013")
     a = build_single(RawCandidate(**c), em, rules, "llm", "P001")
@@ -70,8 +70,8 @@ def test_eval_pass_rate_counts_promos_not_failures(eps):
 
 def test_montage_validator_joins_segments_across_episodes(eps, rules):
     import pytest
-    from promofinder.schemas import RawMontage, RawSegment
-    from promofinder.validate import Invalid, build_montage
+    from snipdeck.schemas import RawMontage, RawSegment
+    from snipdeck.validate import Invalid, build_montage
     em = {e.num: e for e in eps}
     m = RawMontage(segments=[RawSegment(start_line="E01_L002", end_line="E01_L005"),
                              RawSegment(start_line="E02_L011", end_line="E02_L013")],
@@ -103,8 +103,8 @@ def test_spoiler_majority_vote_and_config_override(eps, rules):
 
 
 def test_text_attention_proxy_reads_screenplay_signals(eps):
-    from promofinder.attention import attention
-    from promofinder.schemas import Segment
+    from snipdeck.attention import attention
+    from snipdeck.schemas import Segment
     em = {e.num: e for e in eps}
     seg = lambda a, b: Segment(episode=1, start=a, end=b, start_ts="", end_ts="", first_line="", last_line="")
     # opens on ANNA "You should leave." (voice at 1.0s, direct address) -> slap at 6s is outside the first 3 s
@@ -121,7 +121,7 @@ def test_text_attention_proxy_reads_screenplay_signals(eps):
 
 
 def test_spoiler_policy_trusts_the_vote_over_the_judge_flag(eps, rules):
-    from promofinder.validate import build_single
+    from snipdeck.validate import build_single
     em = {e.num: e for e in eps}
     c = dict(episode=1, start_line="E01_L002", end_line="E01_L013", hook_line="E01_L002", cliffhanger_line="E01_L013")
     a = build_single(RawCandidate(**c), em, rules, "llm", "P001")

@@ -1,4 +1,4 @@
-"""Browser glue: runs the unchanged PromoFinder pipeline inside Pyodide (Python compiled to WebAssembly).
+"""Browser glue: runs the unchanged SnipDeck pipeline inside Pyodide (Python compiled to WebAssembly).
 
 The page (app.js) calls:
   load_files([(name, bytes), ...]) -> JSON summary     # .zip and/or .txt screenplays, unpacked into an in-memory FS
@@ -12,11 +12,11 @@ import shutil
 import zipfile
 from pathlib import Path
 
-from promofinder.export import payload
-from promofinder.llm import LLM, load_config
-from promofinder.parse import load_show
-from promofinder.subtitles import SUBTITLE_EXT, load_subtitles
-from promofinder.pipeline import arun
+from snipdeck.export import payload
+from snipdeck.llm import LLM, load_config
+from snipdeck.parse import load_show
+from snipdeck.subtitles import SUBTITLE_EXT, load_subtitles
+from snipdeck.pipeline import arun
 
 APP = Path(__file__).resolve().parent
 WORK = Path("/work")
@@ -65,7 +65,7 @@ def _configure(opts: dict) -> dict:
     cfg = load_config(APP / "config.yaml", opts.get("profile") or None)
     prov = opts.get("provider") or "gemini"
     if prov == "custom":
-        cfg["providers"]["custom"] = {"base_url": opts.get("base_url", "").strip(), "api_key_env": "PROMOFINDER_CUSTOM_KEY"}
+        cfg["providers"]["custom"] = {"base_url": opts.get("base_url", "").strip(), "api_key_env": "SNIPDECK_CUSTOM_KEY"}
     pc = cfg["providers"].setdefault(prov, {})
     if opts.get("base_url") and prov != "custom":
         pc["base_url"] = opts["base_url"].strip()

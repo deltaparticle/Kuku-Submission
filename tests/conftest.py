@@ -6,7 +6,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from promofinder.parse import load_show  # noqa: E402
+from snipdeck.parse import load_show  # noqa: E402
 
 
 def _ts(t):

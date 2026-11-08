@@ -4,7 +4,7 @@
   python scripts/utils/build_site.py --package-only  # just re-package the Python code (what the GitHub Pages workflow runs)
 
 Writes:
-  web/app.zip                    promofinder/ (code + prompts), config.yaml, bridge.py -> unpacked by Pyodide
+  web/app.zip                    snipdeck/ (code + prompts), config.yaml, bridge.py -> unpacked by Pyodide
   web/data/sample_show.zip       the 50-episode input pack (one-click "try the sample show")
   web/data/official.json         the official run's results, rendered instantly without running anything
 """
@@ -28,7 +28,7 @@ SHOW_NAME = "I Married a Broken Soldier. He was a Duke"
 def package() -> None:
     out = WEB / "app.zip"
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
-        for f in sorted((ROOT / "src" / "promofinder").rglob("*")):
+        for f in sorted((ROOT / "src" / "snipdeck").rglob("*")):
             if f.is_file() and "__pycache__" not in f.parts and f.suffix in (".py", ".md"):
                 z.write(f, f.relative_to(ROOT / "src").as_posix())
         z.write(ROOT / "config.yaml", "config.yaml")
@@ -53,7 +53,7 @@ def official() -> None:
     if not (OFFICIAL / "promos.json").exists():
         print("no official run outputs found: skipping official.json")
         return
-    from promofinder.parse import load_show
+    from snipdeck.parse import load_show
 
     rd = lambda n: json.loads((OFFICIAL / n).read_text(encoding="utf-8"))  # noqa: E731
     promos, cands, log = rd("promos.json"), rd("candidates_all.json"), rd("run_log.json")

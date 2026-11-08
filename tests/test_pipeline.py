@@ -3,8 +3,8 @@ import yaml
 from pathlib import Path
 
 from fake_llm import FakeLLM
-from promofinder.export import write_all
-from promofinder.pipeline import run
+from snipdeck.export import write_all
+from snipdeck.pipeline import run
 
 CFG = yaml.safe_load((Path(__file__).resolve().parents[1] / "config.yaml").read_text(encoding="utf-8"))
 

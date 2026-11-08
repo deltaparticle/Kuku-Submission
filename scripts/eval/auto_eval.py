@@ -30,8 +30,8 @@ ROOT = HERE.parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from evaluate import iou, rule_checks  # noqa: E402
-from promofinder.llm import LLM, load_config  # noqa: E402
-from promofinder.parse import load_show  # noqa: E402
+from snipdeck.llm import LLM, load_config  # noqa: E402
+from snipdeck.parse import load_show  # noqa: E402
 
 
 class PairJ(BaseModel):

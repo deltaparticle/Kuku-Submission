@@ -116,7 +116,7 @@ class Promo(BaseModel):
     rank: int | None = None
     rank_reason: str = ""
     excerpt: list[str] = []
-    attention: dict = {}  # text-based attention proxy (promofinder/attention.py): hook_attention, hold, flags
+    attention: dict = {}  # text-based attention proxy (snipdeck/attention.py): hook_attention, hold, flags
 
 
 class Rejected(BaseModel):

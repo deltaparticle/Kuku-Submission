@@ -1,5 +1,5 @@
 """Subtitle import (synthetic captions, not real show content)."""
-from promofinder.subtitles import load_subtitles
+from snipdeck.subtitles import load_subtitles
 
 SRT = """1
 00:00:01,000 --> 00:00:04,000

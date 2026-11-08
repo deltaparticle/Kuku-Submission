@@ -1,4 +1,4 @@
-/* PromoFinder — review desk.
+/* SnipDeck — review desk.
  * Review: official results from data/official.json (no Python needed), or the results of a run done in this tab.
  * Run: loads Pyodide (Python in WebAssembly) and the unchanged pipeline from app.zip; model calls go from this browser
  * straight to the chosen provider with the visitor's key.
@@ -31,7 +31,7 @@ $$("[data-view]").forEach((a) => a.addEventListener("click", (e) => { e.preventD
 
 /* ---------------- state ---------------- */
 const S = { data: null, runId: "", label: "", filter: "all", sel: null, decisions: {}, official: null };
-const decKey = () => "pf-dec-" + S.runId;
+const decKey = () => "sd-dec-" + S.runId;
 const loadDec = () => { try { return JSON.parse(localStorage.getItem(decKey()) || "{}"); } catch { return {}; } };
 const saveDec = () => localStorage.setItem(decKey(), JSON.stringify(S.decisions));
 const allPromos = () => [...S.data.promos, ...S.data.montages];

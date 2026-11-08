@@ -1,4 +1,4 @@
-# PromoFinder: Automatic Promo Selection for Microdrama Screenplays
+# SnipDeck: Automatic Promo Selection for Microdrama Screenplays
 
 This repository contains the complete implementation and evaluation framework for **finding and ranking promo clips in
 microdrama screenplays**. Given a show's timestamped scripts, it returns ranked 20–60 second clips that open on a
@@ -10,23 +10,23 @@ The central design rule: **the language model may only name script line IDs; cod
 every rule.** This removes the usual failure of model-written timestamps that drift or cut mid-sentence.
 
 * **Live app:** https://deltaparticle.github.io/Kuku-Assignment/ (review the official results, or run it on your own episodes in the browser)
-* **Report (2 pages):** [PromoFinder.pdf](PromoFinder.pdf)
+* **Report (2 pages):** [SnipDeck.pdf](SnipDeck.pdf)
 
 ---
 
 ## 1. Repository Structure
 
-* **`src/promofinder/`**: the core library.
-    * [parse.py](src/promofinder/parse.py): reads screenplay files into lines with stable IDs (`E07_L042`), types and start/end times; defines a *safe cut* (no dialogue or sound playing).
-    * [subtitles.py](src/promofinder/subtitles.py): imports `.srt` / `.vtt` subtitle files (e.g. YouTube auto-captions) as screenplay-like episodes.
-    * [validate.py](src/promofinder/validate.py): turns the model's line IDs into clips: enforces hook ≤ 3 s, 20–60 s, ending on the cliffhanger, and computes legal alternatives for clips that fail.
-    * [stages.py](src/promofinder/stages.py): the model-driven stages: story bible and spoiler vote, candidates with repair, rubric scoring, shuffled listwise ranking, diversity selection and montages.
-    * [attention.py](src/promofinder/attention.py): a text-based attention check (time to first voice, motion, close-ups, sound, dead air).
-    * [heuristics.py](src/promofinder/heuristics.py): keyword/emotion rules used as a recall backstop and as the no-AI baseline.
-    * [llm.py](src/promofinder/llm.py): one async client for any OpenAI-compatible endpoint: per-stage models, fallbacks, retries, parallel calls, disk cache.
-    * [pipeline.py](src/promofinder/pipeline.py): runs the stages end to end; [export.py](src/promofinder/export.py) writes Markdown, CSV and JSON.
-    * [schemas.py](src/promofinder/schemas.py): data models (what the model may return, and what is exported).
-    * [prompts/](src/promofinder/prompts): the five prompts (bible, candidates, score, rank, montage).
+* **`src/snipdeck/`**: the core library.
+    * [parse.py](src/snipdeck/parse.py): reads screenplay files into lines with stable IDs (`E07_L042`), types and start/end times; defines a *safe cut* (no dialogue or sound playing).
+    * [subtitles.py](src/snipdeck/subtitles.py): imports `.srt` / `.vtt` subtitle files (e.g. YouTube auto-captions) as screenplay-like episodes.
+    * [validate.py](src/snipdeck/validate.py): turns the model's line IDs into clips: enforces hook ≤ 3 s, 20–60 s, ending on the cliffhanger, and computes legal alternatives for clips that fail.
+    * [stages.py](src/snipdeck/stages.py): the model-driven stages: story bible and spoiler vote, candidates with repair, rubric scoring, shuffled listwise ranking, diversity selection and montages.
+    * [attention.py](src/snipdeck/attention.py): a text-based attention check (time to first voice, motion, close-ups, sound, dead air).
+    * [heuristics.py](src/snipdeck/heuristics.py): keyword/emotion rules used as a recall backstop and as the no-AI baseline.
+    * [llm.py](src/snipdeck/llm.py): one async client for any OpenAI-compatible endpoint: per-stage models, fallbacks, retries, parallel calls, disk cache.
+    * [pipeline.py](src/snipdeck/pipeline.py): runs the stages end to end; [export.py](src/snipdeck/export.py) writes Markdown, CSV and JSON.
+    * [schemas.py](src/snipdeck/schemas.py): data models (what the model may return, and what is exported).
+    * [prompts/](src/snipdeck/prompts): the five prompts (bible, candidates, score, rank, montage).
 * **`scripts/`**: executable scripts, grouped by function.
     * [run.py](scripts/run.py): the command-line tool (`check` tests a key and model names; `run` finds promos).
     * **`scripts/eval/`**: [evaluate.py](scripts/eval/evaluate.py) re-checks the hard rules on a saved run; [auto_eval.py](scripts/eval/auto_eval.py) measures run-to-run agreement and runs the blind A/B against the baseline; [show_picks.py](scripts/eval/show_picks.py) prints picks with their script for a manual audit.
@@ -143,7 +143,7 @@ penalty across episodes and hook types choose up to 30 promos.
 ## 6. Text Attention Check
 
 Video attention tools look for faces, motion, cuts, loud sounds and early speech. A screenplay describes all of these, so
-[attention.py](src/promofinder/attention.py) measures them from text:
+[attention.py](src/snipdeck/attention.py) measures them from text:
 * **First 3 seconds:** time to the first spoken line, shot changes, close-ups, physical action, sound spikes, raised or
   emotional delivery, direct address ("you", questions) and stakes words.
 * **Whole clip:** longest stretch with nothing said or done, cutting pace, share of time with speech, and whether it ends on
@@ -233,6 +233,6 @@ Sources: [docs/research.md](docs/research.md).
 
 ## 11. Report
 
-The two-page report, [PromoFinder.pdf](PromoFinder.pdf), covers the problem choice and assumptions, the method, results,
+The two-page report, [SnipDeck.pdf](SnipDeck.pdf), covers the problem choice and assumptions, the method, results,
 failure cases, scale and the market research. Its source is in [docs/paper/](docs/paper); the figure is regenerated with
 `python scripts/utils/make_figures.py`.

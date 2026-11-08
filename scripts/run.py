@@ -1,4 +1,4 @@
-"""PromoFinder CLI.
+"""SnipDeck CLI.
 
   python scripts/run.py run --input "<episodes dir>"            # full LLM pipeline (needs an API key)
   python scripts/run.py run --input "<episodes dir>" --no-llm   # rule-based baseline, zero API calls
@@ -15,10 +15,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from promofinder.export import write_all  # noqa: E402
-from promofinder.llm import LLM, load_config  # noqa: E402
-from promofinder.parse import load_show  # noqa: E402
-from promofinder.pipeline import run  # noqa: E402
+from snipdeck.export import write_all  # noqa: E402
+from snipdeck.llm import LLM, load_config  # noqa: E402
+from snipdeck.parse import load_show  # noqa: E402
+from snipdeck.pipeline import run  # noqa: E402
 
 
 def check(config_path: str) -> int:
@@ -55,7 +55,7 @@ def check(config_path: str) -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(prog="promofinder")
+    ap = argparse.ArgumentParser(prog="snipdeck")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="find and rank promos")
     r.add_argument("--input", required=True, help="folder of episode .txt screenplays, or one .srt/.vtt subtitle file")
@@ -81,7 +81,7 @@ def main() -> int:
 
     cfg = load_config(a.config, a.profile)
     if Path(a.input).suffix.lower() in (".srt", ".vtt"):
-        from promofinder.subtitles import load_subtitles
+        from snipdeck.subtitles import load_subtitles
         eps = load_subtitles(a.input, max_seconds=a.max_minutes * 60 if a.max_minutes else None,
                              part_seconds=a.part_seconds, show=a.show)
     else:
@@ -101,7 +101,7 @@ def main() -> int:
     def progress(stage, i, n):
         print(f"  [{stage}] {i}/{n}", flush=True)
 
-    from promofinder.llm import FatalProviderError
+    from snipdeck.llm import FatalProviderError
     try:
         res = run(eps, cfg, llm=llm, use_llm=not a.no_llm, do_montage=not a.no_montage, progress=progress,
                   show=show)
