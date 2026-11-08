@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Gloock&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
@@ -224,12 +224,21 @@
     <p class="aside">The ranking weights were set by hand, re-reading the picks after each run. They were tuned on Gemini
       models, so a different model may want different values. They all live in <code>config.yaml</code>.</p>
 
-    <h2>Who does what</h2>
-    <dl class="roles">
-      <dt>The model</dt><dd>reads the story, proposes moments, judges hooks and cliffhangers, ranks.</dd>
-      <dt>The code</dt><dd>owns every timestamp, the 20–60 s limit, the 3-second hook, safe cuts, no overlaps, two per episode.</dd>
-      <dt>The editor</dt><dd>approves or rejects each pick in the review desk and downloads the list.</dd>
-    </dl>
+    <h2>The whole pipeline</h2>
+    <p>Click any box to see what it does, what goes in and out, and where the code lives. Arrows show what each step
+      hands to the next.</p>
+    <section class="arch" id="arch" aria-label="Architecture diagram">
+      <ul class="arch-key">
+        <li class="role-model"><b>Model</b> reads the story, proposes moments, judges and ranks</li>
+        <li class="role-code"><b>Code</b> owns every timestamp and every rule</li>
+        <li class="role-editor"><b>Editor</b> approves or rejects each pick</li>
+      </ul>
+      <div class="arch-wrap">
+        <div class="arch-grid"><svg class="arch-lines" aria-hidden="true"></svg></div>
+        <div class="arch-side"><aside class="arch-panel" id="arch-panel" aria-live="polite"></aside></div>
+      </div>
+    </section>
+
 
     <h2>What the checks show, and what they don't</h2>
     <p>On the 50-episode sample, all 32 picks pass the hard rules when re-checked from the saved output. A judge shown both
@@ -263,6 +272,7 @@
   </div>
 </footer>
 
-<script src="app.js?v=11"></script>
+<script src="app.js?v=13"></script>
+<script src="arch.js?v=13"></script>
 </body>
 </html>

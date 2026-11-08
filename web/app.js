@@ -30,6 +30,7 @@ function show(view) {
   $$(".nav-links a[data-view]").forEach((a) => a.classList.toggle("on", a.dataset.view === view));
   pillTo($(".nav-links a.on"));
   if (view === "run") engine();
+  if (view === "method" && window.archRedraw) requestAnimationFrame(window.archRedraw);
   if (was && was !== view) window.scrollTo({ top: 0 });
   if (location.hash !== "#" + view) history.replaceState(null, "", "#" + view);
 }
