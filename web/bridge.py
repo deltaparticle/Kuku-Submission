@@ -103,4 +103,6 @@ async def run(options_json: str, progress_fn, log_fn) -> str:
     durations = {e.num: round(e.duration, 2) for e in eps}
     out = payload(res, STATE["show"], durations)
     out["run_log"]["profile"] = cfg.get("active_profile")
+    # every model reply came from the cache (e.g. the demo cache shipped with the site): the app says so in the label
+    out["run_log"]["replayed"] = bool(llm and llm.calls and all(c.get("cached") for c in llm.calls))
     return json.dumps(out, ensure_ascii=False)

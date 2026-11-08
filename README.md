@@ -30,7 +30,7 @@ every cut is computed, and it lands where nobody is speaking.
 * **`scripts/`**: command-line scripts.
     * [run.py](scripts/run.py): the command-line tool (`check` tests a key and model names; `run` finds promos).
     * **`scripts/eval/`**: [evaluate.py](scripts/eval/evaluate.py) re-checks the hard rules on a saved run; [auto_eval.py](scripts/eval/auto_eval.py) measures run-to-run agreement and runs the blind A/B against the baseline; [show_picks.py](scripts/eval/show_picks.py) prints picks with their script for a manual audit.
-    * **`scripts/utils/`**: [build_site.py](scripts/utils/build_site.py) packages the library and data for the website; [make_figures.py](scripts/utils/make_figures.py) draws the report's figure from the saved runs.
+    * **`scripts/utils/`**: [build_site.py](scripts/utils/build_site.py) packages the library and data for the website; [make_figures.py](scripts/utils/make_figures.py) draws the report's figure from the saved runs; [record_demo_cache.py](scripts/utils/record_demo_cache.py) records real model replies for a demo upload, which the site replays from cache (currently episodes 7 and 39 with the free Gemini setting).
 * **`results/`**: unedited outputs on the 50-episode pack: [official-run-C](results/official-run-C) (the official run), [repeat-run-D](results/repeat-run-D) (an independent repeat, for stability) and [rule-baseline](results/rule-baseline). In each, `promos.md` is the readable list.
 * **`web/`**: the static website (review desk and in-browser runner). It runs the same Python package via Pyodide.
 * **`tests/`**: 32 tests on a synthetic fixture, with a fake model for the pipeline wiring.

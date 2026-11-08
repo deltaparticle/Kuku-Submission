@@ -337,6 +337,11 @@ function engine() {
       const buf = await (await fetch("app.zip", { cache: "no-cache" })).arrayBuffer();
       py.unpackArchive(buf, "zip", { extractDir: "/app" });
       py.runPython("import sys; sys.path.insert(0, '/app'); import bridge");
+      // recorded model replies for the demo upload (episodes 7 and 39 with Gemini); other uploads still call the API
+      try {
+        const c = await fetch("data/demo_cache.zip", { cache: "no-cache" });
+        if (c.ok) py.unpackArchive(await c.arrayBuffer(), "zip", { extractDir: "/cache" });
+      } catch { /* no demo cache: runs simply call the provider */ }
       note("Engine ready.");
       return py;
     })();
@@ -398,6 +403,25 @@ function setStage(stage, i, n) {
   el.classList.add("active");
   el.classList.toggle("done", n > 0 && i >= n);
 }
+/* each progress step stays on screen for at least STEP_MS, its bar filling across that time. Real steps take longer
+   than this anyway; a run replayed from cache would otherwise flash through every step in under a second. */
+const STEP_MS = 3000;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let pq = [], pacing = null;
+function progress(s, i, n) { pq.push([s, i, n]); if (!pacing) pacing = pace(); }
+async function pace() {
+  let cur = null, t0 = 0;
+  while (pq.length) {
+    const [s, i, n] = pq.shift();
+    if (!$("#st-" + s)) continue;               // rules-only runs have no stage bars: nothing to pace
+    if (s !== cur) { cur = s; t0 = Date.now(); }
+    const due = t0 + (n ? (STEP_MS * i) / n : 0) - Date.now();
+    if (due > 0) await sleep(due);
+    setStage(s, i, n);
+  }
+  pacing = null;
+}
+async function paced() { while (pacing) await pacing; }
 const log = (line) => { const l = $("#log"); l.textContent += line + "\n"; l.scrollTop = l.scrollHeight; };
 
 $("#run-btn").addEventListener("click", async () => {
@@ -423,11 +447,15 @@ $("#run-btn").addEventListener("click", async () => {
     const py = await engine();
     const bridge = py.pyimport("bridge");
     await new Promise((r) => setTimeout(r, 50));
-    const out = await bridge.run(JSON.stringify(opts), (s, i, n) => setStage(s, i, n), (m) => log(m));
+    pq = [];
+    const out = await bridge.run(JSON.stringify(opts), (s, i, n) => progress(s, i, n), (m) => log(m));
     const data = JSON.parse(out);
+    await paced();
     const secs = Math.round((Date.now() - t0) / 1000);
+    const replay = data.run_log.replayed;
+    if (replay) log(`All ${data.run_log.llm.total_calls} model replies came from the cache, recorded from a real run of these files.`);
     log(`Done in ${secs} s.`);
-    const label = `Your run · ${useLlm ? (data.run_log.profile || "AI") : "rule baseline"} · ${secs} s`;
+    const label = `Your run · ${useLlm ? (data.run_log.profile || "AI") : "rule baseline"}${replay ? " · cached model replies" : ""} · ${secs} s`;
     loadDataset(data, "run-" + t0, label);
     show("review");
   } catch (e) {
