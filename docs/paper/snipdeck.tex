@@ -25,7 +25,7 @@ Sumit Prabhakar \textperiodcentered{} Kuku AI Generalist Assignment, Problem 1\\
 \end{center}
 
 \textbf{Summary.} SnipDeck reads a timestamped screenplay and returns ranked 20--60\,s promo clips: a hook in the
-first 3\,s, an unresolved cut, and clear to a stranger. The key decision: \emph{the model may only name script line IDs;
+first 3\,s, an unresolved ending, and clear to a stranger. The key decision: \emph{the model may only name script line IDs;
 code computes every timestamp and enforces every rule.} On the 50-episode pack it returns 30 promos + 2 montages,
 all passing the hard rules; a blind judge prefers it to a keyword baseline 13--4. It runs on Gemini's free models, and
 a full show takes under 3 minutes on a paid key.\footnote{Expected cost per 50-episode show: nothing on the free tier,
@@ -68,8 +68,8 @@ Official run on the 50-episode pack (3{,}727 lines, 103\,min), with \texttt{gemi
 candidates and \texttt{gemini-3.8-flash} judging; a second, fully independent run measures stability, and a
 keyword-rule baseline is the comparison.
 
-The top of the list is early setup conflict (altar betrayal, public humiliation, a protector stepping in), which is how
-short-drama apps lead their ads. The blind A/B is significant on decisive pairs (13 of 17, $p=0.025$). Two changes did
+The top of the list is early set-up conflict (altar betrayal, public humiliation, a protector stepping in), much like
+the openings of the apps' own ads (\S7). The blind A/B is significant on decisive pairs (13 of 17, $p=0.025$). Two changes did
 most of the work: code no longer edits the model's hook (the first build silently replaced it in 27\% of candidates), and
 low reasoning on the candidate step made each call about 40$\times$ faster (172\,s to 4\,s) without losing the key scenes.
 \textbf{New input:} on 10 minutes of YouTube auto-captions of an official ReelShort episode (no speakers, no visuals),
@@ -133,24 +133,23 @@ Claude Code harness with Qwen models was used in this project; Gemini models run
 \textbf{Where it went wrong:} asked to fix clips that came out too long or short, Qwen wrote a ``rescue'' that moved
 the start and \emph{silently replaced the hook} with whatever line came first. All tests passed; only a manual read of
 the picks caught it (the \#1 promo had lost the moment it was chosen for). \textbf{The fix} was a single invariant:
-the hook and cliffhanger are pinned anchors, and any repair may only adjust the clip around them. A one-line check
-compares the hook text before and after every repair and rejects the clip if it changed, so a silent swap can no
-longer reach the output.
+the hook and cliffhanger are pinned anchors, and any repair may only adjust the clip around them. The code
+no longer chooses a hook: it lists legal alternatives, the model picks one, and a test checks that a
+rejected clip keeps its hook.
 
 \section{Market analysis: how competitors promote}
-ReelShort, DramaBox and their peers win viewers mainly through paid short-video ads cut from the shows themselves. We
-studied their running ads and published industry analyses; each observation set a design rule.
+ReelShort, DramaBox and similar apps find most of their viewers through paid short-video ads cut from their own shows.
+I looked at the ads they are running and at published industry analyses; four observations shaped the design.
 \begin{itemize}
-\item \textbf{Long cuts lead paid feeds.} Most of the competitors' top video ads we reviewed were 10--30-minute
-compilations, not short clips. A 20--60\,s pick therefore also has to work as the cold open of a long ad, which is why the
-3-second hook is enforced in code rather than left to the model.
+\item \textbf{Long cuts lead paid feeds.} Most of the top competitor video ads I reviewed were 10--30-minute
+compilations, not short clips. A 20--60\,s pick may also serve as the cold open of a long ad, so the 3-second hook is
+enforced in code instead of being left to the model.
 \item \textbf{Hidden identity sells.} Secret heirs, disguised billionaires and ``years later he returns'' were the most
-common premises in competitors' ad copy, alongside revenge, contract marriage and betrayal. So the title twist (``he was a
-Duke'') is treated as a selling point, not a spoiler, and genre fit is scored.
-\item \textbf{Ads open on conflict and come from episode 1.} Long-running drama ads most often open mid-conflict rather than
-on set-up, and ReelShort's best-known creative was cut from episode 1. Hence camera-only hooks are rejected and early
-episodes get a small ranking preference.
+common premises in competitors' ad copy, alongside revenge, contract marriage and betrayal. The title twist (``he was a
+Duke'') is therefore a selling point, not a spoiler, and genre fit is scored.
+\item \textbf{Ads open on conflict and come from early episodes.} Long-running drama ads most often open mid-conflict,
+and ReelShort's best-known creative came from episode 1. Camera-only hooks are rejected; early episodes rank slightly higher.
 \item \textbf{Volume is the bottleneck.} Short-drama apps run thousands of creative variations, and each wears out within
-days. Hand-picking moments cannot keep that pace, which is the gap this tool fills.
+days; choosing moments by hand does not keep up.
 \end{itemize}
 \end{document}

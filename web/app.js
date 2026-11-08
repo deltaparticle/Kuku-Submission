@@ -51,7 +51,7 @@ document.fonts && document.fonts.ready.then(() => pillTo($(".nav-links a.on")));
 /* footer clock: the builder's time zone */
 function clock() {
   const t = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
-  $("#clock").textContent = `${t} IST · made in India`;
+  $("#clock").textContent = `${t} in India (IST)`;
 }
 clock(); setInterval(clock, 30000);
 

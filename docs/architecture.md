@@ -1,7 +1,7 @@
 # SnipDeck architecture
 
-Core rule: **the LLM only ever returns line IDs (e.g. `E07_L042`); code computes, snaps and validates every timestamp.**
-Values below are the current `config.yaml` (official run C = `llm-run-5`).
+The LLM only ever returns line IDs (e.g. `E07_L042`); code computes, snaps and validates every timestamp.
+Values below are from the current `config.yaml`, as used for the official run (run C, `llm-run-5`).
 
 ```mermaid
 flowchart TD

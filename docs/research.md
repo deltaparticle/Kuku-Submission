@@ -1,6 +1,6 @@
 # Research notes (collected Nov 2026, before building)
 
-Three research tracks were run so the design follows what top players actually do. Everything here has a source URL.
+Notes from three research passes made before building. Every claim has a source URL.
 Items marked **[unverified]** came from a vendor page or a secondary source and were not independently confirmed.
 Paywalled pages (Variety, Deadline, Business Standard, eMarketer) were read only through search snippets.
 
@@ -30,7 +30,7 @@ Paywalled pages (Variety, Deadline, Business Standard, eMarketer) were read only
 - **Hook/hold benchmarks (general video ads, not drama-specific):** hook rate = 3-second plays / impressions (~25–30% typical, 30%+ strong);
   hold rate = ThruPlays / 3-second plays. No published short-drama-specific benchmark was found.
   https://admanage.ai/blog/what-is-a-good-hook-rate-for-facebook-ads · https://insights.vaizle.com/hook-rate-hold-rate/
-- **No public source describes the scoring rubric editors use before posting.** Teams pick winners by live testing; that is the gap this tool fills.
+- **No public source describes the scoring rubric editors use before posting.** Teams pick winners by live testing. SnipDeck's job is the first pass before that test.
 
 ### Kuku specifically
 - FY26: revenue ₹1,484 cr, marketing ₹1,105 cr = 77.7% of total expenses. https://inc42.com/buzz/ipo-bound-kuku-technologies-turns-profitable-in-fy26-revenue-surges-6x-to-₹1484-cr/
@@ -87,13 +87,13 @@ Paywalled pages (Variety, Deadline, Business Standard, eMarketer) were read only
 
 ## 5. Competitor ad observations (8 Nov 2026)
 
-We reviewed ReelShort's and DramaBox's currently running video ads (US) and their ad copy. Observations:
+I reviewed ReelShort's and DramaBox's currently running video ads (US) and their ad copy.
 
 1. **Long compilations lead.** Most of the competitors' top video ads were 10-30-minute multi-episode compilations, not
    20-60 s clips. The brief's 20-60 s promos match TikTok/Reels/Shorts placements and the **opening of a long ad**: a pick
    must hook in the first seconds whatever follows, so it can double as the cold open of a long cut.
-2. **One creative, many variants.** The same video is reused across many ad variants with different copy, so a strong
-   pick is worth a lot of spend.
+2. **One creative, many variants.** The same video is reused across many ad variants with different copy, so one strong
+   pick can carry a lot of spend.
 3. **Hidden identity is the dominant premise.** Secret heirs, disguised billionaires and "years later he/she returns"
    were the most common premises, followed by betrayal/abandonment, a child or pregnancy secret, and humiliation then
    reversal. This supports treating this show's title twist ("He was a Duke") as promotable rather than a spoiler.

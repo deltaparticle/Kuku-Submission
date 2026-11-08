@@ -1,13 +1,13 @@
 # SnipDeck: Automatic Promo Selection for Microdrama Screenplays
 
-This repository contains the complete implementation and evaluation framework for **finding and ranking promo clips in
-microdrama screenplays**. Given a show's timestamped scripts, it returns ranked 20–60 second clips that open on a
-**hook within the first 3 seconds**, end on an **unresolved cliffhanger**, and **make sense to a viewer who has never
-seen the show**: either one continuous stretch, or a montage of 2–3 moments. It was built for the Kuku AI Generalist
-Assignment (Problem 1, "Find the Promos").
+SnipDeck finds and ranks promo clips in microdrama screenplays. Given a show's timestamped scripts, it returns 20–60
+second clips that open on a hook within the first 3 seconds, end on an unresolved cliffhanger and make sense to someone
+who has never seen the show. A clip is either one continuous stretch or a montage of 2–3 moments. It was built for the
+Kuku AI Generalist Assignment (Problem 1, "Find the Promos").
 
-The central design rule: **the language model may only name script line IDs; code computes every timestamp and enforces
-every rule.** This removes the usual failure of model-written timestamps that drift or cut mid-sentence.
+One rule shapes the design: **the language model may only name script line IDs; code computes every timestamp and
+enforces every rule.** Models asked for timestamps directly get the arithmetic wrong and cut mid-sentence. With line IDs,
+every cut is computed, and it lands where nobody is speaking.
 
 * **Live app:** https://deltaparticle.github.io/Kuku-Assignment/ (review the official results, or run it on your own episodes in the browser)
 * **Report (2 pages):** [SnipDeck.pdf](SnipDeck.pdf)
@@ -27,7 +27,7 @@ every rule.** This removes the usual failure of model-written timestamps that dr
     * [pipeline.py](src/snipdeck/pipeline.py): runs the stages end to end; [export.py](src/snipdeck/export.py) writes Markdown, CSV and JSON.
     * [schemas.py](src/snipdeck/schemas.py): data models (what the model may return, and what is exported).
     * [prompts/](src/snipdeck/prompts): the five prompts (bible, candidates, score, rank, montage).
-* **`scripts/`**: executable scripts, grouped by function.
+* **`scripts/`**: command-line scripts.
     * [run.py](scripts/run.py): the command-line tool (`check` tests a key and model names; `run` finds promos).
     * **`scripts/eval/`**: [evaluate.py](scripts/eval/evaluate.py) re-checks the hard rules on a saved run; [auto_eval.py](scripts/eval/auto_eval.py) measures run-to-run agreement and runs the blind A/B against the baseline; [show_picks.py](scripts/eval/show_picks.py) prints picks with their script for a manual audit.
     * **`scripts/utils/`**: [build_site.py](scripts/utils/build_site.py) packages the library and data for the website; [make_figures.py](scripts/utils/make_figures.py) draws the report's figure from the saved runs.
@@ -149,8 +149,8 @@ Video attention tools look for faces, motion, cuts, loud sounds and early speech
 * **Whole clip:** longest stretch with nothing said or done, cutting pace, share of time with speech, and whether it ends on
   a close-up, a sound sting or an open line.
 
-It gives an attention score, a hold score and plain warnings such as "no voice until 5.5 s" or "6 s of dead air". It agrees
-moderately with the judge's hook score (correlation 0.31), which makes it a useful second opinion rather than a copy.
+It gives an attention score, a hold score and plain warnings such as "no voice until 5.5 s" or "6 s of dead air". Its
+correlation with the judge's hook score is only 0.31, so it adds a second signal instead of repeating the judge.
 
 ---
 
@@ -180,29 +180,29 @@ Official run on the 50-episode pack, with `gemini-3-flash-preview` proposing can
 
 The full ranked list with scripts, scores and reasons is in [results/official-run-C/promos.md](results/official-run-C/promos.md).
 
-**What made the difference:** the first version's length "rescue" silently replaced the model's chosen hook in 27% of
-candidates; the final validator never edits the hook or cliffhanger. Low reasoning effort on the candidate step made each
-call about 40× faster (172 s to 4 s) without losing the key scenes.
+Two fixes mattered most. The first version's length "rescue" silently replaced the model's chosen hook in 27% of
+candidates; the final validator never edits the hook or cliffhanger. And low reasoning effort on the candidate step made
+each call about 40× faster (172 s to 4 s) without losing the key scenes.
 
 ---
 
 ## 8. Market Analysis: How Competitors Promote
 
-ReelShort, DramaBox and their peers win viewers mainly through paid short-video ads, and they cut those ads from the shows
-themselves; their ad pool is effectively their content library. We studied their running ads and published industry
-analyses. Each observation set a design rule:
+ReelShort, DramaBox and similar apps find most of their viewers through paid short-video ads cut from their own shows;
+AppGrowing describes ReelShort's ad pool as its content library. I looked at the ads they are running and at published
+industry analyses. Four observations shaped the design:
 
-* **Long cuts lead paid feeds.** Most of the competitors' top video ads we reviewed were 10–30-minute compilations, not
-  short clips. A 20–60 s pick therefore also has to work as the cold open of a long ad, which is why the 3-second hook is
-  enforced in code rather than left to the model.
-* **Hidden identity sells.** Secret heirs, disguised billionaires and "years later he returns" were the most common
-  premises in competitors' ad copy, alongside revenge, contract marriage and betrayal. So the show's title twist ("he was a
-  Duke") is treated as a selling point, not a spoiler, and genre fit is scored.
-* **Ads open on conflict and come from episode 1.** Long-running drama ads most often open mid-conflict rather than on
-  set-up, and ReelShort's best-known creative was cut from episode 1. Hence camera-only hooks are rejected and early
-  episodes get a small ranking preference.
-* **Volume is the bottleneck.** Short-drama apps run thousands of creative variations, and each wears out within days.
-  Hand-picking moments cannot keep that pace, which is the gap this tool fills.
+* Long cuts lead paid feeds. Most of the top competitor video ads I reviewed were 10–30-minute compilations, not short
+  clips. A 20–60 s pick may therefore also serve as the cold open of a long ad, so the 3-second hook is enforced in code
+  instead of being left to the model.
+* Hidden identity sells. Secret heirs, disguised billionaires and "years later he returns" were the most common premises
+  in competitors' ad copy, alongside revenge, contract marriage and betrayal. The show's title twist ("he was a Duke") is
+  therefore treated as a selling point, not a spoiler, and genre fit is one of the scores.
+* Ads open on conflict and come from early episodes. Long-running drama ads most often open mid-conflict, not on set-up,
+  and ReelShort's best-known creative was cut from episode 1. Camera-only hooks are rejected, and early episodes get a
+  small ranking preference.
+* Volume is the bottleneck. Short-drama apps run thousands of creative variations, and each wears out within days.
+  Choosing moments by hand does not keep up with that; SnipDeck does the first pass so an editor only reviews.
 
 Sources: [docs/research.md](docs/research.md).
 
@@ -210,11 +210,12 @@ Sources: [docs/research.md](docs/research.md).
 
 ## 9. Where It Picks Badly
 
-* **Strict length rule:** 16 of 36 rejections were too long or too short; good moments can be lost when the model cannot fit them.
-* **Weak endings:** some clips stop on a sad or throwaway line instead of an open question.
-* **Noise below the top 5:** the same clip's judge score varies by 0.5–1 point between runs.
-* **Blind spots:** visual hooks are read from text, judge and picker are the same model family, and there is no
-  human-labelled ground truth. A live split test (hook rate, hold rate, click-through) is the real measure.
+* The length rule is strict: 16 of 36 rejections were too long or too short, and a good moment is lost when the model
+  cannot fit it into 20–60 s.
+* Some clips end weakly, on a sad or throwaway line instead of an open question.
+* Below the top 5 the ranking is noisy: the same clip's judge score varies by 0.5–1 point between runs.
+* Visual hooks are read from text, the judge and the picker are the same model family, and there is no human-labelled
+  ground truth. Only a live split test (hook rate, hold rate, click-through) can show whether the picks perform.
 
 ---
 
