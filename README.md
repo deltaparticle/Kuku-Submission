@@ -14,6 +14,55 @@ IDs, code computes every cut, and it lands where nobody is speaking.
 
 ---
 
+## Architecture
+
+```mermaid
+flowchart TD
+    IN[/"Episode screenplays (.txt) or subtitles (.srt / .vtt)"/]
+    P["<b>1 · Parse</b><br/>parse.py<br/>each line gets an ID (E07_L042) and a time"]
+    SUM["<b>2 · Show summary</b><br/>stages.py<br/>who is who, what sells, spoiler episodes"]
+    KW["<b>Keyword picks</b><br/>heuristics.py<br/>extra picks; the no-key baseline"]
+    C["<b>3 · Candidates</b><br/>stages.py<br/>3 moments per episode, as line IDs only"]
+    V["<b>4 · Validate</b><br/>validate.py<br/>IDs → times on safe cuts<br/>hook ≤ 3 s · 20–60 s · ends on the cliffhanger"]
+    AT["<b>Attention check</b><br/>attention.py<br/>first voice, motion, dead air"]
+    SC["<b>5 · Score</b><br/>stages.py<br/>6 criteria, 2 shuffled passes"]
+    R["<b>5 · Rank</b><br/>stages.py<br/>top 40, 3 shuffled orders, Borda count"]
+    SEL["<b>5 · Select</b><br/>stages.py<br/>penalties, quality bar, diversity, ≤ 2 per episode"]
+    M["<b>6 · Montages</b><br/>stages.py<br/>2–3 moments joined, each part re-validated"]
+    E["<b>7 · Export</b><br/>export.py<br/>promos.md / .csv / .json, rejections, run log"]
+    ED(["<b>Editor</b><br/>approves or rejects on the review page"])
+
+    IN --> P
+    P --> SUM --> C
+    P --> KW
+    C -- "line IDs" --> V
+    V -. "rejected: legal line IDs to use instead" .-> C
+    KW --> V
+    V -- "valid clips with times" --> SC --> R --> SEL
+    V --> AT --> SEL
+    SUM -. "spoiler episodes" .-> SEL
+    SEL --> M --> E
+    SEL --> E
+    E --> ED
+
+    classDef model fill:#f7ead2,stroke:#b8862f,color:#2a1d05
+    classDef code fill:#e6ebf1,stroke:#5b6b7d,color:#141b24
+    classDef editor fill:#fbe1d5,stroke:#c85a32,color:#3a1608
+    classDef input fill:#ffffff,stroke:#888888,color:#222222
+    class SUM,C,SC,R,M model
+    class P,KW,V,AT,SEL,E code
+    class ED editor
+    class IN input
+```
+
+Gold boxes call a language model; grey boxes are plain code; the editor has the last word. Every model call goes
+through [llm.py](src/snipdeck/llm.py), which works with any OpenAI-compatible endpoint (the model for each step is set
+in [config.yaml](config.yaml)) and adds retries, fallback models and a disk cache. Step numbers match §4. A detailed
+diagram with every rule and setting is in [docs/architecture.md](docs/architecture.md), and an interactive version is on
+the [live app's Method page](https://deltaparticle.github.io/Kuku-Submission/#method).
+
+---
+
 ## 1. Repository Structure
 
 * **`src/snipdeck/`**: the core library.
