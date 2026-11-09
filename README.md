@@ -14,55 +14,6 @@ IDs, code computes every cut, and it lands where nobody is speaking.
 
 ---
 
-## Architecture
-
-```mermaid
-flowchart TD
-    IN[/"Episode screenplays (.txt) or subtitles (.srt / .vtt)"/]
-    P["<b>1 · Parse</b><br/>parse.py<br/>each line gets an ID (E07_L042) and a time"]
-    SUM["<b>2 · Show summary</b><br/>stages.py<br/>who is who, what sells, spoiler episodes"]
-    KW["<b>Keyword picks</b><br/>heuristics.py<br/>extra picks; the no-key baseline"]
-    C["<b>3 · Candidates</b><br/>stages.py<br/>3 moments per episode, as line IDs only"]
-    V["<b>4 · Validate</b><br/>validate.py<br/>IDs → times on safe cuts<br/>hook ≤ 3 s · 20–60 s · ends on the cliffhanger"]
-    AT["<b>Attention check</b><br/>attention.py<br/>first voice, motion, dead air"]
-    SC["<b>5 · Score</b><br/>stages.py<br/>6 criteria, 2 shuffled passes"]
-    R["<b>5 · Rank</b><br/>stages.py<br/>top 40, 3 shuffled orders, Borda count"]
-    SEL["<b>5 · Select</b><br/>stages.py<br/>penalties, quality bar, diversity, ≤ 2 per episode"]
-    M["<b>6 · Montages</b><br/>stages.py<br/>2–3 moments joined, each part re-validated"]
-    E["<b>7 · Export</b><br/>export.py<br/>promos.md / .csv / .json, rejections, run log"]
-    ED(["<b>Editor</b><br/>approves or rejects on the review page"])
-
-    IN --> P
-    P --> SUM --> C
-    P --> KW
-    C -- "line IDs" --> V
-    V -. "rejected: legal line IDs to use instead" .-> C
-    KW --> V
-    V -- "valid clips with times" --> SC --> R --> SEL
-    V --> AT --> SEL
-    SUM -. "spoiler episodes" .-> SEL
-    SEL --> M --> E
-    SEL --> E
-    E --> ED
-
-    classDef model fill:#f7ead2,stroke:#b8862f,color:#2a1d05
-    classDef code fill:#e6ebf1,stroke:#5b6b7d,color:#141b24
-    classDef editor fill:#fbe1d5,stroke:#c85a32,color:#3a1608
-    classDef input fill:#ffffff,stroke:#888888,color:#222222
-    class SUM,C,SC,R,M model
-    class P,KW,V,AT,SEL,E code
-    class ED editor
-    class IN input
-```
-
-Gold boxes call a language model; grey boxes are plain code; the editor has the last word. Every model call goes
-through [llm.py](src/snipdeck/llm.py), which works with any OpenAI-compatible endpoint (the model for each step is set
-in [config.yaml](config.yaml)) and adds retries, fallback models and a disk cache. Step numbers match §4. A detailed
-diagram with every rule and setting is in [docs/architecture.md](docs/architecture.md), and an interactive version is on
-the [live app's Method page](https://deltaparticle.github.io/Kuku-Submission/#method).
-
----
-
 ## 1. Repository Structure
 
 * **`src/snipdeck/`**: the core library.
@@ -204,7 +155,62 @@ correlation with the judge's hook score is only 0.31, so it adds a second signal
 
 ---
 
-## 7. Results
+## 7. Architecture
+
+```mermaid
+flowchart TB
+    subgraph FIND["Find and check clips"]
+        direction LR
+        P["<b>1 · Parse</b><br/>line IDs, times"] --> SUM["<b>2 · Show summary</b><br/>+ spoiler vote"]
+        SUM --> C["<b>3 · Candidates</b><br/>line IDs only"]
+        C -- "IDs" --> V["<b>4 · Validate</b><br/>hook ≤ 3 s, 20–60 s"]
+        V -. "fix hints" .-> C
+        P --> KW["<b>Keyword picks</b><br/>rules, no model"] --> V
+    end
+    subgraph RANK["Rank and deliver"]
+        direction LR
+        SC["<b>5 · Score + rank</b><br/>judge, shuffled"] --> SEL["<b>5 · Select</b><br/>penalties, diversity"]
+        AT["<b>Attention</b><br/>from the text"] --> SEL
+        SEL --> M["<b>6 · Montages</b><br/>2–3 moments"] --> E["<b>7 · Export</b><br/>md / csv / json"]
+        SEL --> E
+        E --> ED(["<b>Editor</b><br/>approve / reject"])
+    end
+    FIND -- "valid clips with times, spoiler episodes" --> RANK
+
+    classDef model fill:#f7ead2,stroke:#b8862f,color:#2a1d05
+    classDef code fill:#e6ebf1,stroke:#5b6b7d,color:#141b24
+    classDef editor fill:#fbe1d5,stroke:#c85a32,color:#3a1608
+    class SUM,C,SC,M model
+    class P,KW,V,AT,SEL,E code
+    class ED editor
+    style FIND fill:none,stroke:#8b8b8b,stroke-dasharray:4 3
+    style RANK fill:none,stroke:#8b8b8b,stroke-dasharray:4 3
+```
+
+Gold boxes call a language model, grey boxes are plain code, and the editor has the last word. Step numbers match §4.
+
+| Step | Where | Runs on |
+|---|---|---|
+| 1 Parse | [parse.py](src/snipdeck/parse.py) | code |
+| 2 Show summary and spoiler vote | [stages.py](src/snipdeck/stages.py), [prompts/summary.md](src/snipdeck/prompts/summary.md) | model, 3 calls |
+| Keyword picks | [heuristics.py](src/snipdeck/heuristics.py) | code |
+| 3 Candidates | [stages.py](src/snipdeck/stages.py), [prompts/candidates.md](src/snipdeck/prompts/candidates.md) | model, 1 call per episode |
+| 4 Validate | [validate.py](src/snipdeck/validate.py) | code |
+| 5 Score and rank | [stages.py](src/snipdeck/stages.py), [prompts/score.md](src/snipdeck/prompts/score.md), [prompts/rank.md](src/snipdeck/prompts/rank.md) | model |
+| Attention | [attention.py](src/snipdeck/attention.py) | code |
+| 5 Select | [stages.py](src/snipdeck/stages.py) (`final_order`, `select_diverse`) | code |
+| 6 Montages | [stages.py](src/snipdeck/stages.py), [prompts/montage.md](src/snipdeck/prompts/montage.md) | model, checked by validate.py |
+| 7 Export | [export.py](src/snipdeck/export.py) | code |
+| Editor | [web/](web) review page | person |
+
+Every model call goes through [llm.py](src/snipdeck/llm.py), which works with any OpenAI-compatible endpoint (the model
+for each step is set in [config.yaml](config.yaml)) and adds retries, fallback models and a disk cache. A detailed
+diagram with every rule and setting is in [docs/architecture.md](docs/architecture.md), and an interactive version is
+on the [live app's Method page](https://deltaparticle.github.io/Kuku-Submission/#method).
+
+---
+
+## 8. Results
 
 Official run on the 50-episode pack, with `gemini-3-flash-preview` proposing candidates and `gemini-3.8-flash` judging.
 
@@ -236,7 +242,7 @@ each call about 40× faster (172 s to 4 s) without losing the key scenes.
 
 ---
 
-## 8. Market Analysis: How Competitors Promote
+## 9. Market Analysis: How Competitors Promote
 
 ReelShort, DramaBox and similar apps find most of their viewers through paid short-video ads cut from their own shows;
 AppGrowing describes ReelShort's ad pool as its content library. I looked at the ads they are running and at published
@@ -257,7 +263,7 @@ Sources: [docs/research.md](docs/research.md).
 
 ---
 
-## 9. Where It Picks Badly
+## 10. Where It Picks Badly
 
 * The length rule is strict: 16 of 36 rejections were too long or too short, and a good moment is lost when the model
   cannot fit it into 20–60 s.
@@ -268,7 +274,7 @@ Sources: [docs/research.md](docs/research.md).
 
 ---
 
-## 10. Alternatives Considered and Rejected
+## 11. Alternatives Considered and Rejected
 
 * **Model-written timestamps:** the first prompts asked for times directly; the model cannot do timestamp arithmetic
   reliably (an 86 s clip when asked for 25–55 s). Line IDs plus code-computed times replaced this.
@@ -281,7 +287,7 @@ Sources: [docs/research.md](docs/research.md).
 
 ---
 
-## 11. Report
+## 12. Report
 
 The two-page report, [SnipDeck.pdf](SnipDeck.pdf), covers the problem choice and assumptions, the method, results,
 failure cases, scale and the market research. Its source is in [docs/paper/](docs/paper); the figure is regenerated with
