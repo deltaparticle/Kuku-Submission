@@ -2,14 +2,14 @@
 
 For inputs that are not Kuku's screenplay format, e.g. YouTube auto-captions of a full microdrama. Captions have no
 camera/action lines and usually no speaker names, so the pipeline sees dialogue only (text judgement still works;
-the attention proxy has less to go on).
+attention.py has less to go on).
 
 * Rolling auto-caption cues (overlapping fragments that break mid-sentence) are rebuilt into whole sentences.
 * ">>" (YouTube's speaker-change marker) or "- " starts a new speaker turn; "NAME: text" keeps the name.
 * Each sentence gets the start time of the cue its first word came from; it ends where the next sentence starts,
   so cuts can only fall between sentences.
 * A long video is split into parts of ~part_seconds at sentence boundaries; each part is treated as an "episode".
-  Times stay ABSOLUTE (seconds from the start of the video), so a promo's timestamps map straight onto the video.
+  Times stay absolute (seconds from the start of the video), so a promo's timestamps map straight onto the video.
 """
 from __future__ import annotations
 

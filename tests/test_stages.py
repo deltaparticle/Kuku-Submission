@@ -1,8 +1,8 @@
-"""Stage logic that needs no network: repair loop, bible-driven spoilers, ranking penalties, eval pass rate."""
+"""Stage logic that needs no network: repair loop, summary-driven spoilers, ranking penalties, eval pass rate."""
 from snipdeck import stages as S
 from snipdeck.llm import run_sync
 from snipdeck.schemas import CandidateBatch, RawCandidate
-from snipdeck.stages import Bible
+from snipdeck.stages import ShowSummary
 
 
 class RepairLLM:
@@ -23,20 +23,20 @@ class RepairLLM:
 
 def test_repair_call_gets_code_hints_and_recovers_the_moment(eps, rules):
     llm = RepairLLM()
-    promos, rejected = run_sync(S.generate_candidates(llm, eps[:1], Bible(), dict(rules, candidates_per_episode=1)))
+    promos, rejected = run_sync(S.generate_candidates(llm, eps[:1], ShowSummary(), dict(rules, candidates_per_episode=1)))
     assert len(llm.users) == 2 and "E01_L007" in llm.users[1]      # the legal hook list reached the model
     assert len(promos) == 1 and promos[0].hook_line_id == "E01_L006"
     assert rejected and rejected[0].repaired and "too short" in rejected[0].reason
 
 
-def test_late_payoff_episodes_from_structured_and_free_text_bible():
-    b = Bible(late_payoffs=[{"what": "villain arrested", "episodes": [43, "44"]},
+def test_late_payoff_episodes_from_structured_and_free_text_summary():
+    b = ShowSummary(late_payoffs=[{"what": "villain arrested", "episodes": [43, "44"]},
                             "Catherine stripped of status (Ep 47)", "affair exposed (Eps 49-50)"])
     assert S.late_payoff_episodes(b) == {43, 44, 47, 49, 50}
     assert S.late_payoff_episodes(None) == set()
 
 
-def test_final_order_applies_bible_spoilers_and_prefers_early_episodes(eps, rules):
+def test_final_order_applies_summary_spoilers_and_prefers_early_episodes(eps, rules):
     from snipdeck.validate import build_single
     em = {e.num: e for e in eps}
     c = dict(episode=1, start_line="E01_L002", end_line="E01_L013", hook_line="E01_L002", cliffhanger_line="E01_L013")
@@ -95,10 +95,10 @@ class VoteLLM:
 
 
 def test_spoiler_majority_vote_and_config_override(eps, rules):
-    bible = Bible(late_payoffs=[{"what": "x", "episodes": [36, 41, 42, 43, 44]}])
-    got, info = run_sync(S.spoiler_episodes(VoteLLM(), eps, "show", bible, dict(rules, spoiler_votes=3, late_payoff_episodes=None)))
+    summary = ShowSummary(late_payoffs=[{"what": "x", "episodes": [36, 41, 42, 43, 44]}])
+    got, info = run_sync(S.spoiler_episodes(VoteLLM(), eps, "show", summary, dict(rules, spoiler_votes=3, late_payoff_episodes=None)))
     assert got == {41, 42, 43, 44} and "majority of 3" in info["source"]   # 36 and 45 named once: dropped
-    got, info = run_sync(S.spoiler_episodes(VoteLLM(), eps, "show", bible, dict(rules, late_payoff_episodes=[7])))
+    got, info = run_sync(S.spoiler_episodes(VoteLLM(), eps, "show", summary, dict(rules, late_payoff_episodes=[7])))
     assert got == {7} and info["source"] == "config.yaml override"
 
 

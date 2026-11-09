@@ -43,7 +43,7 @@ defeats are spoilers; sexual content (eps 49--50) is flagged as an ad-policy ris
 Each screenplay block becomes a line with an ID (\texttt{E07\_L042}), a type (camera, action, sound, dialogue) and
 start/end times. A time is a \emph{safe cut} if no dialogue or sound is playing. The model only ever sees and returns IDs.
 \begin{enumerate}
-\item \textbf{Story bible} (1 call): who is who, which twists sell, which payoffs spoil. Spoiler episodes are a 2-of-3 vote.
+\item \textbf{Show summary} (1 call): who is who, which twists sell, which payoffs spoil. Spoiler episodes are a 2-of-3 vote.
 \item \textbf{Candidates} (1 call per episode): three moments as start, hook, cliffhanger and end line IDs.
 \item \textbf{Validate} (code): hook within 3\,s of the start, end on the cliffhanger and before the line that answers it,
 cuts on safe points, 20--60\,s. A failing clip goes back to the model with the legal alternatives code computed.

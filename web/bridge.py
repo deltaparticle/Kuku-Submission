@@ -1,10 +1,10 @@
-"""Browser glue: runs the unchanged SnipDeck pipeline inside Pyodide (Python compiled to WebAssembly).
+"""Runs the SnipDeck pipeline in the browser, inside Pyodide (Python compiled to WebAssembly). Called by app.js.
 
 The page (app.js) calls:
   load_files([(name, bytes), ...]) -> JSON summary     # .zip and/or .txt screenplays, unpacked into an in-memory FS
   await run(options_json, progress_fn, log_fn) -> JSON  # the same payload export.payload() gives the CLI
 Model calls go straight from the visitor's browser to the provider with the visitor's key (llm.py uses fetch when
-it detects Pyodide). Nothing is sent to any server of ours.
+it detects Pyodide); there is no server in between.
 """
 import io
 import json
@@ -22,7 +22,7 @@ APP = Path(__file__).resolve().parent
 WORK = Path("/work")
 STATE = {"eps": [], "show": "show"}
 
-JUDGE_STAGES = ("bible", "score", "rank", "montage")
+JUDGE_STAGES = ("summary", "score", "rank", "montage")
 
 
 def load_files(files, max_minutes: float = 10) -> str:
@@ -103,6 +103,6 @@ async def run(options_json: str, progress_fn, log_fn) -> str:
     durations = {e.num: round(e.duration, 2) for e in eps}
     out = payload(res, STATE["show"], durations)
     out["run_log"]["profile"] = cfg.get("active_profile")
-    # every model reply came from the cache (e.g. the demo cache shipped with the site): the app says so in the label
+    # true when every reply came from the cache (e.g. web/data/demo_cache.zip); app.js shows this in the run label
     out["run_log"]["replayed"] = bool(llm and llm.calls and all(c.get("cached") for c in llm.calls))
     return json.dumps(out, ensure_ascii=False)

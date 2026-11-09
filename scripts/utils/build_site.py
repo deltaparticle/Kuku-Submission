@@ -57,11 +57,11 @@ def official() -> None:
 
     rd = lambda n: json.loads((OFFICIAL / n).read_text(encoding="utf-8"))  # noqa: E731
     promos, cands, log = rd("promos.json"), rd("candidates_all.json"), rd("run_log.json")
-    bible = rd("story_bible.json") if (OFFICIAL / "story_bible.json").exists() else None
+    summary = rd("show_summary.json") if (OFFICIAL / "show_summary.json").exists() else None
     auto = rd("auto_eval.json") if (OFFICIAL / "auto_eval.json").exists() else None
     eps = load_show(PACK)
     data = {"show": SHOW_NAME, "promos": promos["promos"], "montages": promos["montages"],
-            "candidates": cands["valid"], "rejected": cands["rejected"], "bible": bible, "run_log": log,
+            "candidates": cands["valid"], "rejected": cands["rejected"], "show_summary": summary, "run_log": log,
             "episode_durations": {e.num: round(e.duration, 2) for e in eps},
             "markdown": (OFFICIAL / "promos.md").read_text(encoding="utf-8"),
             "csv": (OFFICIAL / "promos.csv").read_text(encoding="utf-8-sig"),

@@ -1,4 +1,14 @@
-"""Orchestrates stages 0-7. Works with a real LLM, or with use_llm=False (rule-based baseline, zero API calls)."""
+"""Runs the whole pipeline. Start here when reading the code.
+
+    1 parse              parse.py (done by the caller: load_show / run_folder)
+    2 show summary       stages.make_summary, stages.spoiler_episodes
+    3 candidates         stages.generate_candidates, plus keyword picks from heuristics.py
+    4 validate           validate.py (called inside step 3)
+    5 score, rank, select  stages.score_promos, listwise_rank, final_order, select_diverse; attention.py
+    6 montages           stages.build_montages
+    7 export             export.py (done by the caller)
+
+With use_llm=False only the keyword rules run: that is the no-key baseline."""
 from __future__ import annotations
 
 import time
@@ -29,13 +39,13 @@ async def arun(eps: list[Episode], cfg: dict, llm=None, use_llm: bool = True, do
     n_eps = max((e.num for e in eps), default=1)
     rejected: list[Rejected] = []
     mrejected: list[Rejected] = []
-    bible = None
+    summary = None
     rank_ok = None
     spoiler_eps: set[int] = set()
     spoiler_info: dict = {}
     promos: list[Promo] = []
 
-    # --- heuristic backstop (always runs: free) ---
+    # keyword-rule picks (no model calls): the whole result without a model, extra picks with one
     hper = rules.get("heuristic_per_episode", 1) if use_llm else 3
     hcands = [c for e in eps for c in propose(e, rules, per_episode=hper)]
     hpromos, hbad = validate_many(hcands, em, rules, "heuristic", start_no=1)
@@ -44,20 +54,20 @@ async def arun(eps: list[Episode], cfg: dict, llm=None, use_llm: bool = True, do
     if use_llm:
         if llm is None:
             raise ValueError("use_llm=True needs an LLM client")
-        progress("bible", 0, 1)
-        bible = await S.make_bible(llm, eps, show)
-        spoiler_eps, spoiler_info = await S.spoiler_episodes(llm, eps, show, bible, rules)
-        progress("bible", 1, 1)
-        lp, lbad = await S.generate_candidates(llm, eps, bible, rules, progress)
+        progress("summary", 0, 1)
+        summary = await S.make_summary(llm, eps, show)
+        spoiler_eps, spoiler_info = await S.spoiler_episodes(llm, eps, show, summary, rules)
+        progress("summary", 1, 1)
+        lp, lbad = await S.generate_candidates(llm, eps, summary, rules, progress)
         rejected += lbad
-        # backstop picks only where they add a new moment; re-number so ids are unique across sources
+        # keep keyword picks only where they add a new moment; re-number so IDs are unique
         lp += _drop_overlapping(hpromos, lp)
         for n, p in enumerate(lp, 1):
             p.pid = f"P{n:03d}"
         promos = lp
         for p in promos:
             p.attention = attention(em, p.segments)
-        await S.score_promos(llm, promos, bible, rules, weights, progress)
+        await S.score_promos(llm, promos, summary, rules, weights, progress)
         S.apply_spoiler_policy(promos, spoiler_eps, rules)  # before ranking, so the ranker sees the same flags
         promos.sort(key=lambda p: (-p.composite, p.pid))
         ranks, rank_ok = await S.listwise_rank(llm, promos, rules, progress)
@@ -73,8 +83,8 @@ async def arun(eps: list[Episode], cfg: dict, llm=None, use_llm: bool = True, do
         promos.sort(key=lambda p: (-p.composite, p.pid))
         ordered = S.final_order(promos, {}, {**rules, "final_llm_weight": 0.0}, set(), n_eps)
 
-    # quality bar: a promo must have a hook the judge rates >= min_hook_score and must make sense on its own.
-    # The list may be shorter than final_n: better 24 postable clips than 30 with filler.
+    # quality bar (passes_bar): judge hook score >= min_hook_score and no needs_context flag.
+    # The list can be shorter than final_n.
     eligible = [p for p in ordered if S.passes_bar(p, rules, use_llm)]
     top = S.select_diverse(eligible, rules, rules["final_n"])
     for i, p in enumerate(top, 1):
@@ -84,12 +94,12 @@ async def arun(eps: list[Episode], cfg: dict, llm=None, use_llm: bool = True, do
     if use_llm and do_montage and top:
         try:
             progress("montage", 0, 1)
-            montages, mrejected = await S.build_montages(llm, eligible, eps, bible, rules, start_no=1,
+            montages, mrejected = await S.build_montages(llm, eligible, eps, summary, rules, start_no=1,
                                                    spoiler_eps=spoiler_eps)
             for m in montages:
                 m.attention = attention(em, m.segments)
             if montages:
-                await S.score_promos(llm, montages, bible, {**rules, "score_batch": 25}, weights)
+                await S.score_promos(llm, montages, summary, {**rules, "score_batch": 25}, weights)
                 S.apply_spoiler_policy(montages, spoiler_eps, rules)
                 montages = S.final_order(montages, {}, rules, spoiler_eps, n_eps)
                 for m in montages:
@@ -103,7 +113,7 @@ async def arun(eps: list[Episode], cfg: dict, llm=None, use_llm: bool = True, do
                 for i, m in enumerate(montages, 1):
                     m.rank = i
             progress("montage", 1, 1)
-        except (ValueError, RuntimeError) as e:  # montage is v2: never break the main result
+        except (ValueError, RuntimeError) as e:  # a montage failure keeps the single-clip results
             mrejected.append(Rejected(source="montage", reason=f"montage stage failed: {e}"))
 
     return {
@@ -111,7 +121,7 @@ async def arun(eps: list[Episode], cfg: dict, llm=None, use_llm: bool = True, do
         "montages": montages,
         "all_candidates": promos,
         "rejected": rejected + mrejected,
-        "bible": bible,
+        "show_summary": summary,
         "run_log": {
             "mode": "llm" if use_llm else "rule-based baseline (no LLM)",
             "episodes": len(eps),
@@ -134,7 +144,7 @@ async def arun(eps: list[Episode], cfg: dict, llm=None, use_llm: bool = True, do
 
 
 def run(*a, **kw) -> dict:
-    """Synchronous wrapper (CLI, Streamlit, tests). The browser app awaits arun() directly."""
+    """Synchronous wrapper for the CLI and tests. The website awaits arun() directly."""
     from .llm import run_sync
     return run_sync(arun(*a, **kw))
 

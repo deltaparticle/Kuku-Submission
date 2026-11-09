@@ -24,7 +24,7 @@ Scoring guide:
   forced/contract marriage, betrayal by family or lover, powerful protector
 
 Flags (true/false):
-- spoiler_risk: reveals a big late-show payoff listed under late_payoffs in the story bible (NOT the title-level
+- spoiler_risk: reveals a big late-show payoff listed under late_payoffs in the show summary (NOT the title-level
   premise twist, which is fine to show)
 - ad_policy_risk: sexual content, nudity, or graphic violence/torture that Meta/TikTok may restrict
 - needs_context: still confusing to a stranger even after reading the clip

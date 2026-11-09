@@ -1,4 +1,4 @@
-"""Synthetic fixture (NOT Kuku content) in the same screenplay format, so tests need no confidential data."""
+"""Synthetic fixture (not Kuku content) in the same screenplay format, so tests need no confidential data."""
 import sys
 from pathlib import Path
 

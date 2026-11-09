@@ -65,7 +65,7 @@ a:hover { text-decoration-color: var(--ink-2); }
 .grain { position: fixed; inset: 0; pointer-events: none; z-index: 100; opacity: .06; mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 
-/* ---------- buttons ---------- */
+/* buttons */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--tap); padding: 0 18px;
   border-radius: var(--r); border: 1px solid transparent; cursor: pointer; font-weight: 600; font-size: .9375rem;
   text-decoration: none; white-space: nowrap;
@@ -83,7 +83,7 @@ a:hover { text-decoration-color: var(--ink-2); }
   text-decoration-color: var(--line-2); text-underline-offset: 4px; min-height: var(--tap); display: inline-flex; align-items: center; }
 .link-quiet:hover { color: var(--ink); text-decoration-color: var(--ink-2); }
 
-/* ---------- floating nav ---------- */
+/* floating nav */
 .nav-wrap { position: fixed; top: var(--nav-top); left: 0; right: 0; z-index: 50; display: flex; justify-content: center;
   padding: 0 var(--sp-2); pointer-events: none; }
 .nav { pointer-events: auto; display: flex; align-items: center; gap: var(--sp-3); height: var(--nav-h); padding: 0 5px 0 18px;
@@ -103,7 +103,7 @@ a:hover { text-decoration-color: var(--ink-2); }
   background: var(--raise); opacity: 0;
   transition: transform .5s var(--spring), width .5s var(--spring), opacity .25s var(--ease-out); }
 
-/* ---------- shared ---------- */
+/* shared */
 .view { display: none; }
 .view.on { display: block; animation: fade .45s var(--ease-out); }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }   /* opacity only: a transform here would trap the fixed action bar */
@@ -111,7 +111,7 @@ a:hover { text-decoration-color: var(--ink-2); }
 .lede { font-size: clamp(1.0625rem, 1rem + .3vw, 1.1875rem); color: var(--ink-2); max-width: 56ch; line-height: 1.6; }
 .margin-note, .side-note { font-size: var(--fs-small); color: var(--ink-3); line-height: 1.5; max-width: 44ch; }
 
-/* ================= HOME ================= */
+/* Home */
 #view-home { padding: 0 clamp(20px, 5vw, 72px); max-width: 1280px; margin: 0 auto; }
 .hero { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: clamp(32px, 6vw, 96px); align-items: center;
   padding: calc(var(--nav-h) + var(--sp-8)) 0 var(--sp-7); }
@@ -162,20 +162,19 @@ a:hover { text-decoration-color: var(--ink-2); }
 .honest { color: var(--ink-2); max-width: 64ch; }
 .honest a { margin-left: 4px; }
 
-/* ---------- footer ---------- */
+/* footer */
 .site-foot { background: var(--bg-deep); border-top: 1px solid var(--line); margin-top: var(--sp-6); }
 body[data-view="review"] .site-foot { display: none; }
 .foot-inner { max-width: 1280px; margin: 0 auto; padding: var(--sp-6) clamp(20px, 5vw, 72px) var(--sp-5);
-  display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: var(--sp-5); align-items: start; }
+  display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--sp-5); align-items: start; }
 .foot-mark { font-weight: 700; font-size: 1.0625rem; margin-bottom: var(--sp-1); }
 .foot-sign p:last-child { color: var(--ink-2); font-size: var(--fs-small); max-width: 44ch; }
 .foot-links { display: flex; flex-direction: column; }
 .foot-links a { color: var(--ink-2); text-decoration: none; min-height: var(--tap); display: inline-flex; align-items: center;
   width: max-content; font-size: var(--fs-small); transition: color .25s var(--ease-out), transform .4s var(--spring); }
 .foot-links a:hover { color: var(--ink); transform: translateX(3px); }
-.foot-time { font-size: var(--fs-cap); color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
-/* ================= REVIEW DESK =================
+/* Review
    The page scrolls. The clip list is pinned under the nav with its own scroll; the detail flows with the page. */
 :root { --desk-top: calc(var(--nav-top) + var(--nav-h) + 10px); --act-h: 64px; }
 #view-review.on { padding: var(--desk-top) 0 calc(var(--act-h) + 12px); }
@@ -253,7 +252,7 @@ select { cursor: pointer; appearance: none; padding-right: 34px;
 .row .warn { color: var(--ink-2); }
 .rows .none { padding: 20px 4px; color: var(--ink-2); font-size: var(--fs-small); }
 
-/* ---------- clip detail: title, one line of facts, the cut, then the script page and a narrow notes column ---------- */
+/* clip detail: title, one line of facts, the cut, then the script page and a narrow notes column */
 .detail { min-height: calc(100dvh - var(--desk-top) - var(--act-h) - 12px); padding: var(--sp-3) 0 var(--sp-5) clamp(20px, 3vw, 40px); }
 .detail .empty { color: var(--ink-2); padding: var(--sp-5) 0; }
 .d-eyebrow { font-size: var(--fs-small); color: var(--ink-2); }
@@ -309,7 +308,7 @@ kbd { display: inline-block; min-width: 20px; text-align: center; border: 1px so
 .acts { display: flex; gap: 8px; align-items: center; }
 .tally { font-size: var(--fs-cap); color: var(--ink-3); margin-right: 8px; }
 
-/* ================= RUN ================= */
+/* Run */
 .page { max-width: 1180px; margin: 0 auto; padding: calc(var(--nav-h) + var(--sp-7)) clamp(20px, 5vw, 72px) var(--sp-6); }
 .run-page { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 5fr); gap: clamp(32px, 6vw, 96px); align-items: start; }
 .run-intro { position: sticky; top: 120px; }
@@ -359,7 +358,7 @@ kbd { display: inline-block; min-width: 20px; text-align: center; border: 1px so
 details summary { cursor: pointer; color: var(--ink-2); font-size: var(--fs-small); margin-top: var(--sp-1); min-height: var(--tap); display: flex; align-items: center; }
 #log { font-family: var(--script); font-size: 12px; color: var(--ink-2); max-height: 220px; overflow: auto; white-space: pre-wrap; }
 
-/* ================= METHOD ================= */
+/* Method */
 .prose { display: block; }
 .prose > * { max-width: 64ch; }
 .prose > h1 { font-family: var(--display); font-weight: 400; letter-spacing: 0; font-size: clamp(2.25rem, 1.6rem + 2vw, 3.25rem);
@@ -375,7 +374,7 @@ details summary { cursor: pointer; color: var(--ink-2); font-size: var(--fs-smal
 .roles dt { font-weight: 600; }
 .roles dd { margin: 0; color: var(--ink-2); }
 
-/* ================= small screens ================= */
+/* Small screens */
 @media (max-width: 960px) {
   .hero { grid-template-columns: 1fr; padding-top: calc(var(--nav-h) + var(--sp-6)); gap: var(--sp-5); }
   .hero-sample { max-width: 460px; }
@@ -388,7 +387,6 @@ details summary { cursor: pointer; color: var(--ink-2); font-size: var(--fs-smal
   .run-intro { position: static; }
   .progress { grid-column: 1; }
   .foot-inner { grid-template-columns: 1fr 1fr; }
-  .foot-time { grid-column: 1 / -1; }
   .d-body { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
@@ -437,7 +435,7 @@ details summary { cursor: pointer; color: var(--ink-2); font-size: var(--fs-smal
   .scribble path { stroke-dashoffset: 0; }
 }
 
-/* ================= ARCHITECTURE DIAGRAM (Method page) =================
+/* Architecture diagram (Method page)
    Three quiet role tones; the selected box and its arrows are the brightest things in the figure. */
 .prose > .arch { max-width: none; margin: var(--sp-3) 0 var(--sp-2); }
 .arch { --model: #c7a46a; --model-bg: #25221d; --model-line: #4a4131; --code: #93a3b5; --code-bg: #1e2023; --code-line: #363b42;
@@ -503,7 +501,7 @@ details summary { cursor: pointer; color: var(--ink-2); font-size: var(--fs-smal
   .node[data-id="client"] { order: 99; }
   .node[data-id="client"]::before { content: none !important; }
   .node[data-id="client"]::after { margin-top: 6px; }
-  .node[data-id="shows"] { order: 0; } .node[data-id="parse"] { order: 1; } .node[data-id="bible"] { order: 2; }
+  .node[data-id="shows"] { order: 0; } .node[data-id="parse"] { order: 1; } .node[data-id="summary"] { order: 2; }
   .node[data-id="cands"] { order: 3; } .node[data-id="validate"] { order: 4; } .node[data-id="backstop"] { order: 5; }
   .node[data-id="score"] { order: 6; } .node[data-id="rank"] { order: 7; } .node[data-id="attention"] { order: 8; }
   .node[data-id="select"] { order: 9; } .node[data-id="montage"] { order: 10; } .node[data-id="export"] { order: 11; }

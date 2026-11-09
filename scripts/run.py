@@ -68,7 +68,7 @@ def main() -> int:
     r.add_argument("--no-montage", action="store_true")
     r.add_argument("--no-cache", action="store_true")
     r.add_argument("--fresh-stages", default="", help="comma list of stages to re-call instead of reading the cache, "
-                   "e.g. bible,score,rank,montage (keeps the cached candidates)")
+                   "e.g. summary,score,rank,montage (keeps the cached candidates)")
     r.add_argument("--run-id", default=None)
     r.add_argument("--profile", default=None, help="fast | thorough (default) | free_tier, see config.yaml")
     r.add_argument("--cache-dir", default=str(ROOT / ".cache"),

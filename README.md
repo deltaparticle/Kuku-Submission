@@ -5,9 +5,9 @@ second clips that open on a hook within the first 3 seconds, end on an unresolve
 who has never seen the show. A clip is either one continuous stretch or a montage of 2–3 moments. It was built for the
 Kuku AI Generalist Assignment (Problem 1, "Find the Promos").
 
-One rule shapes the design: **the language model may only name script line IDs; code computes every timestamp and
-enforces every rule.** Models asked for timestamps directly get the arithmetic wrong and cut mid-sentence. With line IDs,
-every cut is computed, and it lands where nobody is speaking.
+The design follows from one rule: **the language model may only name script line IDs; code computes every timestamp
+and enforces every rule.** Asked for timestamps directly, models get the arithmetic wrong and cut mid-sentence. With line
+IDs, code computes every cut, and it lands where nobody is speaking.
 
 * **Live app:** https://deltaparticle.github.io/Kuku-Submission/ (review the official results, or run it on your own episodes in the browser)
 * **Report (2 pages):** [SnipDeck.pdf](SnipDeck.pdf)
@@ -20,20 +20,20 @@ every cut is computed, and it lands where nobody is speaking.
     * [parse.py](src/snipdeck/parse.py): reads screenplay files into lines with stable IDs (`E07_L042`), types and start/end times; defines a *safe cut* (no dialogue or sound playing).
     * [subtitles.py](src/snipdeck/subtitles.py): imports `.srt` / `.vtt` subtitle files (e.g. YouTube auto-captions) as screenplay-like episodes.
     * [validate.py](src/snipdeck/validate.py): turns the model's line IDs into clips: enforces hook ≤ 3 s, 20–60 s, ending on the cliffhanger, and computes legal alternatives for clips that fail.
-    * [stages.py](src/snipdeck/stages.py): the model-driven stages: story bible and spoiler vote, candidates with repair, rubric scoring, shuffled listwise ranking, diversity selection and montages.
+    * [stages.py](src/snipdeck/stages.py): the model-driven stages: show summary and spoiler vote, candidates with repair, rubric scoring, shuffled listwise ranking, diversity selection and montages.
     * [attention.py](src/snipdeck/attention.py): a text-based attention check (time to first voice, motion, close-ups, sound, dead air).
     * [heuristics.py](src/snipdeck/heuristics.py): keyword/emotion rules used as a recall backstop and as the no-AI baseline.
     * [llm.py](src/snipdeck/llm.py): one async client for any OpenAI-compatible endpoint: per-stage models, fallbacks, retries, parallel calls, disk cache.
     * [pipeline.py](src/snipdeck/pipeline.py): runs the stages end to end; [export.py](src/snipdeck/export.py) writes Markdown, CSV and JSON.
     * [schemas.py](src/snipdeck/schemas.py): data models (what the model may return, and what is exported).
-    * [prompts/](src/snipdeck/prompts): the five prompts (bible, candidates, score, rank, montage).
+    * [prompts/](src/snipdeck/prompts): the five prompts (summary, candidates, score, rank, montage).
 * **`scripts/`**: command-line scripts.
     * [run.py](scripts/run.py): the command-line tool (`check` tests a key and model names; `run` finds promos).
     * **`scripts/eval/`**: [evaluate.py](scripts/eval/evaluate.py) re-checks the hard rules on a saved run; [auto_eval.py](scripts/eval/auto_eval.py) measures run-to-run agreement and runs the blind A/B against the baseline; [show_picks.py](scripts/eval/show_picks.py) prints picks with their script for a manual audit.
     * **`scripts/utils/`**: [build_site.py](scripts/utils/build_site.py) packages the library and data for the website; [make_figures.py](scripts/utils/make_figures.py) draws the report's figure from the saved runs; [record_demo_cache.py](scripts/utils/record_demo_cache.py) records real model replies for a demo upload, which the site replays from cache (currently episodes 7 and 39 with the free Gemini setting).
 * **`results/`**: unedited outputs on the 50-episode pack: [official-run-C](results/official-run-C) (the official run), [repeat-run-D](results/repeat-run-D) (an independent repeat, for stability) and [rule-baseline](results/rule-baseline). In each, `promos.md` is the readable list.
 * **`web/`**: the static website (review desk and in-browser runner). It runs the same Python package via Pyodide.
-* **`tests/`**: 32 tests on a synthetic fixture, with a fake model for the pipeline wiring.
+* **`tests/`**: 33 tests on a synthetic fixture, with a fake model for the pipeline wiring.
 * **`docs/`**: [architecture.md](docs/architecture.md) (detailed diagram), [research.md](docs/research.md) (industry and competitor research, with sources), [paper/](docs/paper) (LaTeX source of the report).
 * **`config.yaml`**: providers, per-stage models, speed profiles, rules and score weights. Models are swapped here, never in code.
 * **`requirements.txt`**: Python dependencies.
@@ -96,7 +96,7 @@ Start: (00:11.30) | End: (00:13.40)
 ```
 Block types are `CAMERA`, `ACTION`, `SOUND FX` and dialogue (`NAME (Emotion)`, including `(O.S.)`). The pack has 50 episodes,
 3,727 timed lines and 103 minutes of screen time. Speaker labels and place names vary across episodes (the same person
-may appear as a name or a description), which the story bible resolves.
+may appear as a name or a description), which the show summary resolves.
 
 ---
 
@@ -104,7 +104,7 @@ may appear as a name or a description), which the story bible resolves.
 
 1. **Parse** (code): every block becomes a line $\ell = (\text{id}, \text{type}, \text{speaker}, t^s, t^e)$. A time $t$ is a
    *safe cut* if no dialogue or sound line has $t^s < t < t^e$.
-2. **Story bible** (1 model call): characters and aliases, which twists sell the show, which payoffs would spoil it.
+2. **Show summary** (1 model call): characters and aliases, which twists sell the show, which payoffs would spoil it.
    Spoiler episodes are decided by a two-out-of-three vote so they do not change between runs; an editor can fix them in `config.yaml`.
 3. **Candidates** (1 call per episode): three moments, each returned as start, hook, cliffhanger and end **line IDs**, never times.
 4. **Validate and snap** (code): the clip starts at most 3 s before the hook, ends on the cliffhanger (keeping only silent
@@ -112,6 +112,7 @@ may appear as a name or a description), which the story bible resolves.
    fails goes back to the model with the exact line IDs that would make it legal.
 5. **Score**, **rank** and **select** (§5).
 6. **Montages**: the model joins 2–3 moments in story order; the same validator checks every part.
+7. **Export** (code): ranked promos as Markdown, CSV and JSON, plus every candidate, every rejection and a run log.
 
 ---
 
@@ -190,19 +191,18 @@ each call about 40× faster (172 s to 4 s) without losing the key scenes.
 
 ReelShort, DramaBox and similar apps find most of their viewers through paid short-video ads cut from their own shows;
 AppGrowing describes ReelShort's ad pool as its content library. I looked at the ads they are running and at published
-industry analyses. Four observations shaped the design:
+industry analyses. What I found, and what it changed in the design:
 
-* Long cuts lead paid feeds. Most of the top competitor video ads I reviewed were 10–30-minute compilations, not short
-  clips. A 20–60 s pick may therefore also serve as the cold open of a long ad, so the 3-second hook is enforced in code
-  instead of being left to the model.
-* Hidden identity sells. Secret heirs, disguised billionaires and "years later he returns" were the most common premises
-  in competitors' ad copy, alongside revenge, contract marriage and betrayal. The show's title twist ("he was a Duke") is
-  therefore treated as a selling point, not a spoiler, and genre fit is one of the scores.
-* Ads open on conflict and come from early episodes. Long-running drama ads most often open mid-conflict, not on set-up,
-  and ReelShort's best-known creative was cut from episode 1. Camera-only hooks are rejected, and early episodes get a
-  small ranking preference.
-* Volume is the bottleneck. Short-drama apps run thousands of creative variations, and each wears out within days.
-  Choosing moments by hand does not keep up with that; SnipDeck does the first pass so an editor only reviews.
+* Most of the top competitor video ads I reviewed were 10–30-minute compilations, not short clips, so long cuts lead
+  paid feeds. A 20–60 s pick may therefore also serve as the cold open of a long ad, which is why code, not the model,
+  enforces the 3-second hook.
+* Secret heirs, disguised billionaires and "years later he returns" were the most common premises in competitors' ad
+  copy, alongside revenge, contract marriage and betrayal: hidden identity sells. SnipDeck therefore treats the show's
+  title twist ("he was a Duke") as a selling point rather than a spoiler, and genre fit is one of the scores.
+* Long-running drama ads most often open mid-conflict rather than on set-up, and ReelShort's best-known creative was
+  cut from episode 1. So camera-only hooks are rejected, and early episodes get a small ranking preference.
+* Short-drama apps run thousands of creative variations, and each wears out within days, so volume is the bottleneck.
+  Choosing moments by hand cannot keep up; SnipDeck does the first pass so an editor only reviews.
 
 Sources: [docs/research.md](docs/research.md).
 

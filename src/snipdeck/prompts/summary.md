@@ -1,7 +1,7 @@
 You are a story analyst for a vertical microdrama studio. You are given the per-episode loglines and
 continuity notes of one show (1-2 minute episodes) plus the list of speaker labels used in the scripts.
 
-Build a compact "story bible" that other tools will use to pick promo clips. Return ONLY JSON:
+Write a compact show summary that later steps will use to pick promo clips. Return ONLY JSON:
 
 {
   "premise": "one sentence, spoiler-free, as you would pitch it to a stranger",

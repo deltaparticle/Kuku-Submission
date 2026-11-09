@@ -3,7 +3,7 @@ import re
 
 from snipdeck.heuristics import propose
 from snipdeck.schemas import (CandidateBatch, MontageBatch, RankItem, RankResult, ScoreBatch, ScoreItem)
-from snipdeck.stages import Bible
+from snipdeck.stages import ShowSummary
 
 
 class FakeLLM:
@@ -14,8 +14,8 @@ class FakeLLM:
 
     def json(self, stage, system, user, schema, **kw):
         self.calls.append(stage)
-        if schema is Bible:
-            return Bible(premise="synthetic show")
+        if schema is ShowSummary:
+            return ShowSummary(premise="synthetic show")
         if schema is CandidateBatch:
             nums = [int(n) for n in re.findall(r"=== EPISODE (\d+)", user)]
             cands = [c for n in nums for c in propose(self.eps[n], self.rules, per_episode=2)]

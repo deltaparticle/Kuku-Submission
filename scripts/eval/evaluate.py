@@ -4,7 +4,7 @@
                                   [--gold gold.yaml] [--k 10]
 
 1) RULE CHECKS (no labels needed) - every promo must satisfy the brief's hard constraints.
-2) GOLD METRICS (optional: a gold.yaml of editor-picked spans, labelled BEFORE looking at model output).
+2) GOLD METRICS (optional: a gold.yaml of editor-picked spans, labelled before looking at model output).
    hit@k      a promo in the top k overlaps a gold span of that episode with temporal IoU >= 0.5
    hook-hit   that promo's hook text contains the gold hook phrase
    cliff-hit  that promo's cliffhanger text contains the gold cliffhanger phrase

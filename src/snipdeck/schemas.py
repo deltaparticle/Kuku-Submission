@@ -1,4 +1,4 @@
-"""Pydantic schemas: what the LLM may return (IDs only) and what we export (code-computed times)."""
+"""Data models: what the model may return (line IDs only) and what is exported (times computed by code)."""
 from __future__ import annotations
 
 from typing import Literal
@@ -15,7 +15,7 @@ CLIFF_TYPES = [
 ]
 
 
-# ---------- LLM -> code (line IDs only; never timestamps) -------------------
+# returned by the model: line IDs only, never timestamps
 class RawCandidate(BaseModel):
     episode: int
     start_line: str = Field(description="ID of the first line of the clip, e.g. E07_L012")
@@ -82,7 +82,7 @@ class MontageBatch(BaseModel):
     montages: list[RawMontage] = []
 
 
-# ---------- exported objects (times computed by code) -----------------------
+# exported: times computed by code
 class Segment(BaseModel):
     episode: int
     start: float
@@ -116,7 +116,7 @@ class Promo(BaseModel):
     rank: int | None = None
     rank_reason: str = ""
     excerpt: list[str] = []
-    attention: dict = {}  # text-based attention proxy (snipdeck/attention.py): hook_attention, hold, flags
+    attention: dict = {}  # from attention.py: hook_attention, hold, flags
 
 
 class Rejected(BaseModel):

@@ -1,16 +1,16 @@
-/* SnipDeck — review desk.
- * Review: official results from data/official.json (no Python needed), or the results of a run done in this tab.
- * Run: loads Pyodide (Python in WebAssembly) and the unchanged pipeline from app.zip; model calls go from this browser
- * straight to the chosen provider with the visitor's key.
+/* SnipDeck website: the Home, Review, Run and Method views (index.html). arch.js draws the Method page diagram.
+ * Review: shows data/official.json (no Python needed), or the results of a run made in this tab.
+ * Run: loads Pyodide (Python in WebAssembly) and the same pipeline from app.zip, then calls bridge.py; model calls go
+ * from this browser straight to the chosen provider with the visitor's key.
  */
 const PYODIDE_URL = "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/";
 const DEFAULTS = {
   gemini: { bulk: "gemini-3-flash-preview", judge: "gemini-3.8-flash" },
   openai: { bulk: "", judge: "" },
-  // free on OpenRouter (tested 9 Nov 2026: 2 episodes in ~12 min); the judge is the larger model
+  // free models on OpenRouter; the judge is the larger one
   openrouter: { bulk: "nvidia/nemotron-3.5-super-vl:free", judge: "nvidia/nemotron-3-ultra-550b-a55b:free" }, groq: { bulk: "", judge: "" }, custom: { bulk: "", judge: "" },
 };
-const STAGES = [["bible", "Story bible"], ["candidates", "Candidate clips"], ["score", "Scoring"], ["rank", "Ranking"], ["montage", "Montages"]];
+const STAGES = [["summary", "Show summary"], ["candidates", "Candidate clips"], ["score", "Scoring"], ["rank", "Ranking"], ["montage", "Montages"]];
 const SCORE_NAMES = [["hook_3s", "Hook, first 3 s"], ["cliffhanger", "Cliffhanger"], ["standalone", "Makes sense alone"],
   ["intensity", "Intensity"], ["plot_relevance", "Plot relevance"], ["trope_fit", "Genre fit"]];
 
@@ -22,7 +22,7 @@ const toSec = (ts) => { const [m, s] = String(ts).split(":"); return (+m) * 60 +
 const tc = (sec) => `${pad(Math.floor(sec / 60))}:${(sec % 60).toFixed(2).padStart(5, "0")}`;
 const short = (sec) => `${Math.floor(sec / 60)}:${pad(Math.floor(sec % 60))}`;
 
-/* ---------------- views ---------------- */
+/* views */
 const VIEWS = ["home", "review", "run", "method"];
 function show(view) {
   if (!VIEWS.includes(view)) view = "home";
@@ -51,13 +51,6 @@ $("#nav-links").addEventListener("mouseleave", () => pillTo($(".nav-links a.on")
 window.addEventListener("resize", () => pillTo($(".nav-links a.on")));
 document.fonts && document.fonts.ready.then(() => pillTo($(".nav-links a.on")));
 
-/* footer clock: the builder's time zone */
-function clock() {
-  const t = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
-  $("#clock").textContent = `${t} in India (IST)`;
-}
-clock(); setInterval(clock, 30000);
-
 /* landing: the real #1 pick from the official run */
 function heroSample(data) {
   const p = data.promos && data.promos[0];
@@ -74,7 +67,7 @@ function heroSample(data) {
   requestAnimationFrame(() => { bar.style.width = (100 * (e.end - s.start)) / D + "%"; });
 }
 
-/* ---------------- state ---------------- */
+/* state */
 const S = { data: null, runId: "", label: "", filter: "all", sel: null, decisions: {}, official: null };
 const decKey = () => "sd-dec-" + S.runId;
 const loadDec = () => { try { return JSON.parse(localStorage.getItem(decKey()) || "{}"); } catch { return {}; } };
@@ -110,7 +103,7 @@ function loadDataset(data, runId, label) {
   tally();
 }
 
-/* ---------------- list ---------------- */
+/* list */
 function visible() {
   if (!S.data || S.filter === "rejected") return [];
   const q = $("#q").value.toLowerCase().trim();
@@ -156,7 +149,7 @@ $$("#filters button").forEach((b) => b.addEventListener("click", () => {
 $("#q").addEventListener("input", drawList);
 $("#sort").addEventListener("change", drawList);
 
-/* ---------------- detail ---------------- */
+/* detail */
 function parseExcerpt(ex) {
   return (ex || []).map((l) => {
     if (l.startsWith("---")) return { brk: l.replace(/^-+\s*/, "") };
@@ -250,7 +243,7 @@ function drawRejected() {
       `<tr><td class="mono">${esc(r.episode ?? "—")}</td><td class="mono">${esc((r.start_line || "") + (r.end_line ? " – " + r.end_line : ""))}</td><td>${esc(r.reason)}${r.repaired ? " (repair tried)" : ""}</td></tr>`).join("")}</table>`;
 }
 
-/* ---------------- approve / reject ---------------- */
+/* approve / reject */
 function decide(kind) {
   if (!S.sel) return;
   S.decisions[S.sel] = S.decisions[S.sel] === kind ? undefined : kind;
@@ -287,7 +280,7 @@ document.addEventListener("keydown", (e) => {
   else if (k === "r") decide("rejected");
 });
 
-/* ---------------- export ---------------- */
+/* export */
 function download(name, text, type) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([text], { type }));
@@ -310,7 +303,7 @@ $$("#export-menu button").forEach((b) => b.addEventListener("click", () => {
   }
 }));
 
-/* ---------------- official results ---------------- */
+/* official results */
 (async () => {
   try {
     const data = await (await fetch("data/official.json")).json();
@@ -323,7 +316,7 @@ $$("#export-menu button").forEach((b) => b.addEventListener("click", () => {
   }
 })();
 
-/* ---------------- Python engine ---------------- */
+/* Python engine */
 let enginePromise = null;
 const note = (t, bad = false) => { const n = $("#engine-note"); n.textContent = t; n.classList.toggle("bad", bad); };
 const loadScript = (src) => new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
@@ -350,7 +343,7 @@ function engine() {
   return enginePromise;
 }
 
-/* ---------------- run ---------------- */
+/* run */
 let mode = "ai";
 $$("#mode button").forEach((b) => b.addEventListener("click", () => {
   mode = b.dataset.mode;
@@ -476,6 +469,6 @@ $("#run-btn").addEventListener("click", async () => {
   }
 });
 
-/* ---------------- start ---------------- */
+/* start */
 show((location.hash || "#home").slice(1).replace(/[^a-z]/g, "") || "home");
 window.addEventListener("hashchange", () => show(location.hash.slice(1).replace(/[^a-z]/g, "")));

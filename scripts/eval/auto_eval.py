@@ -1,15 +1,15 @@
 """No-human quality checks (used because there is no hand-labelled gold set).
 
   python scripts/eval/auto_eval.py --input "<episodes dir>" --run results/official-run-C \
-        --baseline outputs/<show>/baseline-test [--prev outputs/<show>/llm-run-1] [--no-judge]
+        --baseline results/rule-baseline [--prev results/repeat-run-D] [--no-judge]
 
 What it measures (all automatic, none of it replaces a human editor):
   1. RULES      hard constraints from the brief, re-checked on the saved output.
   2. AGREEMENT  how much the picks of different runs overlap (temporal IoU >= 0.5, same episode).
                 Two independent LLM runs agreeing on a moment is a consistency signal; agreeing with the
-                rule-based baseline is a (weak) sanity signal.
-  3. BLIND A/B  for every episode where pipeline and baseline chose DIFFERENT moments, a judge model sees both
-                clips (order randomised, then swapped). The pipeline only "wins" if it wins in BOTH orders.
+                rule-based baseline is a weak check.
+  3. BLIND A/B  for every episode where pipeline and baseline chose different moments, a judge model sees both
+                clips (order randomised, then swapped). The pipeline only "wins" if it wins in both orders.
                 Caveat: judge and proposer are both Gemini-family models, so self-preference is possible.
 """
 from __future__ import annotations

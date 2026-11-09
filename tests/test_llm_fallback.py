@@ -1,5 +1,5 @@
 """A model that hangs must not hold up the run: the client switches to the fallback after one timeout and skips the
-hung model for the rest of the run (this is what kept the free-key web demo stuck on the story bible)."""
+hung model for the rest of the run."""
 from pathlib import Path
 
 from snipdeck.llm import LLM, HTTPError, load_config
@@ -21,9 +21,9 @@ def test_timeout_switches_model_at_once_and_is_remembered(tmp_path):
 
     llm._transport = fake_transport
     msgs = [{"role": "user", "content": "first"}]
-    assert llm._raw("bible", msgs, 0.0) == '{"ok": true}'
+    assert llm._raw("summary", msgs, 0.0) == '{"ok": true}'
     assert tried == ["gemini-3.8-flash", "gemini-3.7-flash"]      # one timeout, no retries on the hung model
 
     tried.clear()
-    llm._raw("bible", [{"role": "user", "content": "second"}], 0.0)
+    llm._raw("summary", [{"role": "user", "content": "second"}], 0.0)
     assert tried == ["gemini-3.7-flash"]                          # the hung model is skipped for the rest of the run

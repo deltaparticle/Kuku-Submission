@@ -1,15 +1,15 @@
-# SnipDeck config. To swap a model, change provider/model for a stage - no code changes.
-# All providers are OpenAI-compatible endpoints. Model names change often: check the provider's
-# model list / rate-limit page before a run (free-tier quotas are not guaranteed).
+# SnipDeck settings, read by src/snipdeck/llm.py (providers, stages, profiles) and src/snipdeck/pipeline.py
+# (rules, weights). Models are swapped here, never in code.
 
+# Any OpenAI-compatible endpoint. The key is read from the env var named in api_key_env (or from .env).
 providers:
   gemini:
     base_url: https://generativelanguage.googleapis.com/v1beta/openai/
     api_key_env: GEMINI_API_KEY
-    min_interval_s: 0.3        # spacing between call starts (paid key). free_tier profile uses 7
-    concurrency: 8             # calls in flight at once (parallel episodes / scoring batches / ranking runs)
-    timeout: 300               # a 40-clip scoring call with model "thinking" can take >90 s
-    retries: 3                 # attempts per model before switching to its fallback
+    min_interval_s: 0.3        # minimum gap between call starts
+    concurrency: 8             # calls in flight at once
+    timeout: 300               # seconds per call
+    retries: 3                 # attempts per model before moving to its fallback
   groq:
     base_url: https://api.groq.com/openai/v1
     api_key_env: GROQ_API_KEY
@@ -18,66 +18,69 @@ providers:
     base_url: https://openrouter.ai/api/v1
     api_key_env: OPENROUTER_API_KEY
     min_interval_s: 4
-  openai:                      # also used for any Kuku-provided gateway: change base_url
+  openai:                      # also works for a company gateway: change base_url
     base_url: https://api.openai.com/v1
     api_key_env: OPENAI_API_KEY
 
-# Which model does what. Bulk stages use a cheap/fast model; bible + ranking get the stronger one.
-# NOTE (verified 8 Nov 2026 with `scripts/run.py check` + probes): gemini-3.8-flash/3.7-flash/3.5-flash/3.1-pro-preview answer;
-# gemini-2.5-flash is 404. Strong flash models allow only ~20 requests/day on the free tier: keep them for the few-call stages.
-# Many-call stages (candidates: 1 call per episode) run on the lite model; few-call stages use the stronger model.
+# The model for each step (see src/snipdeck/stages.py). Candidates makes one call per episode, so it uses a cheaper
+# model with low reasoning effort; the other steps make a few calls each and use the stronger model.
 stages:
-  bible:      {provider: gemini, model: gemini-3.8-flash, temperature: 0.0, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
-  # candidates: reasoning_effort low is essential: by default this model "thought" ~63k billed tokens on ONE episode
-  # (~Rs 17); with low it used 0 and still found the key scenes (tested 8 Nov on ep 3).
+  summary:    {provider: gemini, model: gemini-3.8-flash, temperature: 0.0, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
   candidates: {provider: gemini, model: gemini-3-flash-preview, temperature: 0.0, reasoning_effort: low, fallback_models: [gemini-3.5-flash-lite]}
   score:      {provider: gemini, model: gemini-3.8-flash, temperature: 0.0, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
   rank:       {provider: gemini, model: gemini-3.8-flash, temperature: 0.0, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
   montage:    {provider: gemini, model: gemini-3.8-flash, temperature: 0.2, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
   eval_judge: {provider: gemini, model: gemini-3.1-flash-lite, temperature: 0.0, fallback_models: [gemini-3.5-flash-lite, gemini-3-flash-preview, gemini-3.6-flash]}
 
-# Deterministic rules (code, not LLM)
+# Rules enforced by code. Clip shape: src/snipdeck/validate.py. Selection and penalties: final_order and select_diverse in
+# src/snipdeck/stages.py.
 rules:
+  # clip shape
   min_len_s: 20
   max_len_s: 60
-  hook_window_s: 3.0         # the hook line must start within this many seconds of clip start
+  hook_window_s: 3.0         # the hook line must start within this many seconds of the clip start
   lead_in_s: 0.3             # start this long before the hook line
   tail_s: 0.4                # keep this long after the cliffhanger line
   react_s: 3.0               # silent reaction beats (camera/action/SFX) kept after the cliffhanger line
-  max_per_episode: 2
+  # candidates
   episodes_per_batch: 1
-  candidates_per_episode: 3  # the repair call tops an episode up to this many accepted candidates
-  top_n_for_ranking: 40      # listwise LLM ranking runs on this many (>= final_n so every pick is ranked)
-  rank_runs: 3               # shuffled-order runs, aggregated by Borda count
-  score_batch: 40            # clips per scoring call (fewer calls on the strong model's small daily quota)
-  score_passes: 2            # score every clip twice in differently shuffled batches and average (stability)
-  final_n: 30                # at most this many promos in the final ranked list
-  min_hook_score: 2.5        # quality bar: judge's hook score (1-5, averaged over passes) needed for the final list
-  drop_needs_context: true   # quality bar: clips the judge says a stranger cannot follow never reach the final list
-  drop_ad_policy: false      # ad-policy risk is penalised (and flagged) rather than dropped
-  heuristic_per_episode: 1   # backstop candidates added per episode (if not overlapping an LLM pick)
-  montage_pool: 12
-  montage_count: 8
-  montage_keep: 5            # best montages kept after scoring
-  montage_min_composite: 0.5
-  mmr_same_episode: 0.35     # similarity penalty for same-episode picks
-  mmr_same_hook_type: 0.15
-  mmr_lambda: 0.35
-  final_llm_weight: 0.6      # blend of listwise-rank (Borda) vs rubric composite
-  penalty_spoiler: 0.15
-  spoiler_source: vote       # vote = spoilers are the voted/override episodes only (judge flag kept as judge_spoiler);
-                             # judge_or_vote = also penalise clips the judge flags (it keeps flagging the title twist)
-  spoiler_votes: 3           # main bible + 2 short passes; an episode is a spoiler only if most passes name it
+  candidates_per_episode: 3  # the repair call tops an episode up to this many valid candidates
+  heuristic_per_episode: 1   # keyword-rule picks added per episode when they don't overlap a model pick
+  # scoring and ranking
+  score_batch: 40            # clips per scoring call
+  score_passes: 2            # each clip is scored in this many differently shuffled batches, then averaged
+  top_n_for_ranking: 40      # clips sent to the ranking calls
+  rank_runs: 3               # shuffled ranking calls, combined by Borda count
+  final_llm_weight: 0.6      # final = 0.6 * rank + 0.4 * judge composite, before penalties
+  # spoilers (decided per show by vote; the judge's per-clip flag is kept as judge_spoiler)
+  spoiler_source: vote       # or judge_or_vote: also penalise clips the judge flags
+  spoiler_votes: 3           # the main summary call + 2 short passes; an episode counts if most passes name it
   spoiler_vote_temperature: 0.5
-  late_payoff_episodes: null # or a list, e.g. [41, 42, 43, 44, 47]: an editor's fixed spoiler list for this show
+  late_payoff_episodes: null # or a fixed list, e.g. [41, 42, 43, 44, 47], to override the vote
+  # penalties and the attention term
+  penalty_spoiler: 0.15
   penalty_policy: 0.25
   penalty_needs_context: 0.10
-  penalty_late_episode: 0.10 # linear: 0 for episode 1 -> this much for the last episode (post early episodes first)
-  attention_weight: 0.15     # text attention proxy (attention.py): final += w * (0.7*hook_attention + 0.3*hold - center)
-  attention_center: 0.55     # roughly the average clip, so the nudge is +-0.05 at most for typical clips
+  penalty_late_episode: 0.10 # grows linearly from 0 at episode 1 to this value at the last episode
+  attention_weight: 0.15     # final += w * (0.7 * hook_attention + 0.3 * hold - center), see attention.py
+  attention_center: 0.55     # about the average clip's attention
+  # final list
+  min_hook_score: 2.5        # clips below this judge hook score are dropped
+  drop_needs_context: true   # clips the judge says a stranger can't follow are dropped
+  drop_ad_policy: false      # ad-policy risk is penalised and flagged, not dropped
+  final_n: 30
+  max_per_episode: 2
+  mmr_same_episode: 0.35     # diversity penalty for a second pick from the same episode
+  mmr_same_hook_type: 0.15   # diversity penalty for repeating a hook type
+  mmr_lambda: 0.35
+  # montages
+  montage_pool: 12
+  montage_count: 8
+  montage_keep: 5
+  montage_min_composite: 0.5
   seed: 7
 
-# Composite score weights (sum need not be 1)
+# Weights of the six judge scores in the composite.
 weights:
   hook_3s: 3.0
   cliffhanger: 3.0
@@ -86,27 +89,26 @@ weights:
   plot_relevance: 1.0
   trope_fit: 1.0
 
-# Speed profiles (python scripts/run.py run --profile fast|thorough|free_tier; the web app has the same choice).
-# A profile is merged over everything above. thorough = the settings of the official run (llm-run-5).
+# Speed profiles, merged over everything above (scripts/run.py --profile; the Speed menu on the website).
+# thorough = the settings used for results/official-run-C.
 default_profile: thorough
 profiles:
   thorough: {}
-  fast:                        # ~3-6 min for 50 episodes on a paid key: judges think less, one scoring pass
+  fast:                        # judges use low reasoning effort and score once
     stages:
-      bible:   {reasoning_effort: low}
+      summary: {reasoning_effort: low}
       score:   {reasoning_effort: low}
       rank:    {reasoning_effort: low}
       montage: {reasoning_effort: low}
     rules:
       score_passes: 1
-  free_tier:                   # free Gemini keys: one call at a time, 7 s apart (429s seen at 4 s), and judges must
-    providers:                 # think less: with full thinking one free-tier judge call took ~5 min, with low ~5 s
-      gemini: {concurrency: 1, min_interval_s: 7, timeout: 90, retries: 2}   # free-tier calls can hang: give up sooner
-    stages:                    # ... and fall back to models that are less overloaded on the free tier
-      bible:   {reasoning_effort: low, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
+  free_tier:                   # free Gemini keys: one call at a time, a shorter timeout, lighter fallback models
+    providers:
+      gemini: {concurrency: 1, min_interval_s: 7, timeout: 90, retries: 2}
+    stages:
+      summary: {reasoning_effort: low, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
       score:   {reasoning_effort: low, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
       rank:    {reasoning_effort: low, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
       montage: {reasoning_effort: low, fallback_models: [gemini-3.7-flash, gemini-3.5-flash-lite]}
     rules:
       score_passes: 1
-

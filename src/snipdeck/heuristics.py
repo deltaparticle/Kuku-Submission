@@ -1,9 +1,9 @@
-"""Heuristic backstop + no-LLM baseline.
+"""Keyword rules: extra picks for the model pipeline, and the no-key baseline.
 
-Scans each episode for windows that (a) open on a strong line within 3s and (b) end on an
-unresolved-sounding line. Pure rules, zero API calls. Used for two things:
-  1. recall safety-net, so an LLM miss does not lose a great moment
-  2. the baseline we compare the full pipeline against (scripts/eval/)
+Scans each episode for windows that open on a strong line within 3 s and end on an unresolved-sounding line.
+No model calls. Used for two things:
+  1. one extra pick per episode, so a moment the model misses can still be found
+  2. the baseline the model pipeline is compared against (scripts/eval/)
 """
 from __future__ import annotations
 

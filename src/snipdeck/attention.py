@@ -1,8 +1,8 @@
-"""Text-based attention prediction: a screenplay stand-in for video attention tools (Neurons, Dragonfly AI).
+"""Attention check from the screenplay text, used as a small term in stages.final_order.
 
-Those tools predict, from the video, whether the first seconds grab attention: faces in close-up, motion, cuts,
+Video attention tools predict, from the video, whether the first seconds grab attention: faces in close-up, motion, cuts,
 sound spikes, someone speaking straight away. A timestamped screenplay describes all of these, so they can be
-measured from text, deterministically and for free:
+measured from text without a model:
 
   CAMERA lines   -> shot changes (cuts) and shot size (close-up = a face filling the frame)
   ACTION lines   -> on-screen motion / physical impact
@@ -10,8 +10,8 @@ measured from text, deterministically and for free:
   DIALOGUE lines -> time to the first voice, vocal intensity (emotion tag, "!"), direct address ("you", questions)
 
 hook_attention (first 3 s) and hold (whole clip: dead air, pacing, speech coverage, ending beat) are 0-1 scores.
-They are a second opinion next to the LLM judge, NOT ground truth: weights are hand-set from attention research
-rules of thumb (faces, motion, sound and early speech capture attention) and are not fitted to real ad results.
+They are a second opinion next to the judge, not ground truth: the weights are set by hand from common findings
+(faces, motion, sound and early speech catch attention) and are not fitted to real ad results.
 """
 from __future__ import annotations
 

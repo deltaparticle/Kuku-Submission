@@ -26,7 +26,7 @@ def test_baseline_no_llm_runs_and_respects_rules(eps, rules):
 def test_full_pipeline_with_fake_llm(eps, rules, tmp_path):
     fake = FakeLLM(eps, rules)
     res = run(eps, _cfg(rules), llm=fake, use_llm=True)
-    assert {"bible", "candidates", "score", "rank", "montage"} <= set(fake.calls)
+    assert {"summary", "candidates", "score", "rank", "montage"} <= set(fake.calls)
     ranks = [p.rank for p in res["promos"]]
     assert ranks == list(range(1, len(ranks) + 1))
     # per-episode cap

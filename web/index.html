@@ -8,12 +8,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Gloock&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=18">
+  <link rel="stylesheet" href="style.css?v=19">
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
 
-<!-- ============ floating pill nav ============ -->
+<!-- Floating pill nav -->
 <header class="nav-wrap">
   <nav class="nav" aria-label="Main">
     <a class="wordmark" href="#home" data-view="home"><span class="mark" aria-hidden="true"></span><span class="wm-text">SnipDeck</span></a>
@@ -28,7 +28,7 @@
 </header>
 
 <main>
-<!-- ================= HOME ================= -->
+<!-- Home -->
 <section class="view" id="view-home">
   <div class="hero">
     <div class="hero-copy">
@@ -49,7 +49,7 @@
         <p class="sample-line"><span class="sample-cue">cuts</span><span id="hs-ends">&nbsp;</span></p>
         <p class="sample-q" id="hs-q"></p>
       </div>
-      <p class="margin-note">The #1 pick from a 50-episode show. The model chose the lines; code set the timestamps.</p>
+      <p class="margin-note">The #1 pick from a 50-episode show.</p>
     </aside>
   </div>
 
@@ -58,7 +58,7 @@
       <h2>How a promo gets picked</h2>
       <ol class="steps">
         <li><span class="step-n">01</span><div><h3>Read the whole show</h3><p>Every line of the screenplay gets an ID and a time. A cut is only allowed where nobody is talking.</p></div></li>
-        <li class="indent"><span class="step-n">02</span><div><h3>Propose moments</h3><p>A model reads each episode and names three candidate clips: where the hook is and where it should end. Line IDs only, never times.</p></div></li>
+        <li class="indent"><span class="step-n">02</span><div><h3>Propose moments</h3><p>A model reads each episode and names three candidate clips by their script lines: where to start, the hook, and where to end.</p></div></li>
         <li><span class="step-n">03</span><div><h3>Check every cut</h3><p>Code turns the IDs into timestamps and enforces the rules: hook within 3 seconds, 20–60 seconds long, nothing after the cliffhanger that answers it. Bad clips go back to the model with the lines that would fix them.</p></div></li>
         <li class="indent"><span class="step-n">04</span><div><h3>Rank what's left</h3><p>A judge scores each clip, ranks the best ones three times in shuffled order, and spreads the picks across episodes. You make the final call.</p></div></li>
       </ol>
@@ -80,7 +80,7 @@
   </div>
 </section>
 
-<!-- ================= REVIEW ================= -->
+<!-- Review -->
 <section class="view" id="view-review">
   <div class="desk-head">
     <div class="desk-id">
@@ -133,7 +133,7 @@
   </footer>
 </section>
 
-<!-- ================= RUN ================= -->
+<!-- Run -->
 <section class="view" id="view-run">
   <div class="page run-page">
     <div class="run-intro">
@@ -198,10 +198,10 @@
   </div>
 </section>
 
-<!-- ================= METHOD ================= -->
+<!-- Method -->
 <section class="view" id="view-method">
   <article class="page prose">
-    <h1>The model names lines. Code does the cutting.</h1>
+    <h1>Method</h1>
     <p class="lede">An editor today watches every episode to find the half-minute that makes a stranger stop scrolling.
       SnipDeck reads the timestamped screenplay instead, proposes those cuts, and ranks them by what to post first.</p>
 
@@ -212,7 +212,7 @@
     <h2>How it works</h2>
     <p><b>Parse.</b> Every screenplay block becomes a line with an ID like <code>E07_L042</code>, a type and its start and end
       time. A cut is only allowed where no one is speaking and no sound effect is playing.</p>
-    <p><b>Story bible.</b> One model call reads the episode summaries: who is who, which twists sell the show, which
+    <p><b>Show summary.</b> One model call reads the episode summaries: who is who, which twists sell the show, which
       payoffs would spoil it. Spoiler episodes come from a two-out-of-three vote so they don't flip between runs.</p>
     <p><b>Candidates.</b> One call per episode proposes three moments, as line IDs only.</p>
     <p><b>Validate.</b> Code turns IDs into times, keeps the hook inside the first three seconds, ends on the cliffhanger
@@ -259,7 +259,7 @@
   <div class="foot-inner">
     <div class="foot-sign">
       <p class="foot-mark">SnipDeck</p>
-      <p>A model proposes the clips and code makes the cuts. An editor still decides what runs.</p>
+      <p>Built by Sumit Prabhakar for the Kuku AI Generalist assignment, November 2026.</p>
     </div>
     <nav class="foot-links" aria-label="Footer">
       <a href="#review" data-view="review">Review the picks</a>
@@ -268,11 +268,10 @@
       <a href="https://github.com/deltaparticle/Kuku-Submission/blob/main/SnipDeck.pdf" target="_blank" rel="noopener">The 2-page report ↗</a>
       <a href="https://github.com/deltaparticle/Kuku-Submission" target="_blank" rel="noopener">Code on GitHub ↗</a>
     </nav>
-    <p class="foot-time" id="clock">India</p>
   </div>
 </footer>
 
-<script src="app.js?v=18"></script>
-<script src="arch.js?v=18"></script>
+<script src="app.js?v=19"></script>
+<script src="arch.js?v=19"></script>
 </body>
 </html>

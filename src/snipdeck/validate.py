@@ -1,11 +1,11 @@
-"""Stage 3: validate LLM proposals and SNAP them to real, safe cut points.
+"""Step 4 of the pipeline: turn the model's line IDs into clips with real times, on safe cut points.
 
-The LLM only names line IDs. Everything here is deterministic code, so a hallucinated or
-mid-sentence timestamp cannot reach the output.
+The model only names line IDs. Everything here is plain code, so an invented or mid-sentence timestamp cannot
+reach the output. Entry points: validate_many (single clips) and build_montage.
 
-Code never replaces the model's hook or cliffhanger. It only pads and snaps the cut points. If a moment
+Code never replaces the model's hook or cliffhanger. It only pads the clip and moves its cuts to safe points. If a moment
 cannot meet the rules (20-60 s, hook in the first 3 s), it is rejected with a hint that lists the legal
-alternatives, and the candidate stage asks the model to choose again.
+alternatives, and stages.generate_candidates asks the model to choose again.
 """
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ def ep_of_id(lid: str) -> int:
     return int(m.group(1))
 
 
-# ---------------------------------------------------------------- cut points
+# cut points
 def _start_time(ep: Episode, first: Line, hook: Line | None, rules: dict) -> float:
     """Clip start: the model's first line, but never more than hook_window_s before the hook."""
     t0 = first.start
@@ -151,7 +151,7 @@ def _excerpt(ep: Episode, t0: float, t1: float, include_camera: bool = False) ->
     return out
 
 
-# ---------------------------------------------------------------- singles
+# single clips
 def build_single(c: RawCandidate, eps: dict[int, Episode], rules: dict, source: str, pid: str) -> Promo:
     """Turn a model proposal (line IDs) into a clip with real times, or raise Invalid (with a fix hint)."""
     if c.episode not in eps:
@@ -197,7 +197,7 @@ def build_single(c: RawCandidate, eps: dict[int, Episode], rules: dict, source: 
     )
 
 
-# ---------------------------------------------------------------- montages
+# montages
 def build_montage(m: RawMontage, eps: dict[int, Episode], rules: dict, pid: str) -> Promo:
     if not (2 <= len(m.segments) <= 3):
         raise Invalid("montage needs 2-3 segments")

@@ -1,17 +1,15 @@
-"""Model-agnostic LLM client (async core, works in normal Python and in the browser via Pyodide).
+"""Client for any OpenAI-compatible chat endpoint (Gemini, Groq, OpenRouter, OpenAI or a company gateway).
 
-One thin layer over any OpenAI-compatible chat endpoint (Gemini, Groq, OpenRouter, OpenAI, or Kuku's own gateway).
-Swapping a model is a config.yaml edit, never a code change. Features:
+The steps in stages.py call LLM.ajson(stage, system, user, Schema). Which model a stage uses is set in config.yaml.
 
-* per-stage provider/model selection, fallback models, optional reasoning_effort
-* PARALLEL calls: per-provider concurrency limit + minimum spacing between call starts (asyncio)
-* on-disk cache keyed by (endpoint, model, temperature, messages, effort): re-runs are free
-* JSON output parsed + validated with Pydantic, one retry that shows the model its invalid reply
-* 429/5xx/timeout backoff, model fallback, daily-quota memory (dead_models.json)
-* every call is logged (tokens incl. hidden thinking tokens, seconds, cached?) for the run_log
+* per-stage provider and model, fallback models, optional reasoning_effort
+* parallel calls: a concurrency limit per provider and a minimum gap between call starts
+* disk cache keyed by (endpoint, model, temperature, messages, effort), so re-runs cost nothing
+* replies parsed as JSON and checked against a Pydantic schema; one retry shows the model its invalid reply
+* backoff on 429/5xx/timeouts, model fallback, and a record of models whose daily quota ran out (dead_models.json)
+* every call is logged (tokens including hidden reasoning tokens, seconds, cache hit) for run_log.json
 
-Transport: in CPython the `openai` SDK (run in a worker thread); in the browser (sys.platform == "emscripten")
-the browser's fetch via pyodide.http.pyfetch. All providers above allow browser (CORS) calls (checked 8 Nov 2026).
+Transport: the `openai` SDK in normal Python; in the browser (Pyodide) the browser's fetch via pyodide.http.pyfetch.
 """
 from __future__ import annotations
 
@@ -98,8 +96,8 @@ class HTTPError(Exception):
 
 
 class FatalProviderError(Exception):
-    """Account-level problem (bad key, no credit, no access). Deliberately NOT a RuntimeError, so the stages'
-    'one bad batch must not kill the run' handlers do not swallow it: the whole run stops with this message."""
+    """Account problem (bad key, no credit, no access). Not a RuntimeError, so the per-call error handlers in
+    stages.py don't catch it and the whole run stops with this message."""
 
 
 FATAL_HINTS = {
@@ -111,7 +109,7 @@ FATAL_HINTS = {
 
 
 def run_sync(coro):
-    """Run a coroutine from synchronous code (CLI, Streamlit, tests)."""
+    """Run a coroutine from synchronous code (CLI, tests)."""
     try:
         asyncio.get_running_loop()
     except RuntimeError:
@@ -128,8 +126,8 @@ class LLM:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.api_keys = api_keys or {}  # provider name -> key (UI "bring your own key")
         self.use_cache = use_cache
-        self.fresh_stages = set(fresh_stages or ())  # stages that must NOT read the cache (they still write it)
-        self._skip: set[str] = set()  # models that hung or stayed overloaded through every attempt in THIS run
+        self.fresh_stages = set(fresh_stages or ())  # stages that skip reading the cache (they still write it)
+        self._skip: set[str] = set()  # models that hung or stayed overloaded in this run
         self.calls: list[dict] = []
         self.log = log or (lambda msg: print(msg, flush=True))
         self._clients: dict[str, Any] = {}
@@ -153,7 +151,7 @@ class LLM:
         except OSError:
             pass
 
-    # -- plumbing -----------------------------------------------------------
+    # internals
     def _stage(self, stage: str) -> tuple[str, dict, str]:
         s = self.cfg["stages"][stage]
         prov = s["provider"]
@@ -175,7 +173,7 @@ class LLM:
         return self._clients[prov]
 
     def _key(self, pcfg: dict, model: str, messages: list[dict], temperature: float, effort: str | None = None) -> str:
-        parts = [pcfg["base_url"], model, temperature, messages] + ([effort] if effort else [])  # old keys stay valid
+        parts = [pcfg["base_url"], model, temperature, messages] + ([effort] if effort else [])  # keys without effort match older cache files
         blob = json.dumps(parts, sort_keys=True, ensure_ascii=False)
         return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
@@ -338,7 +336,7 @@ class LLM:
     def _raw(self, stage: str, messages: list[dict], temperature: float, json_mode: bool = True) -> str:
         return run_sync(self._araw(stage, messages, temperature, json_mode))
 
-    # -- public API ---------------------------------------------------------
+    # public API
     async def ajson(self, stage: str, system: str, user: str, schema: type[T], temperature: float | None = None,
                     max_retries: int = 1) -> T:
         """Call the stage's model and return a validated Pydantic object."""

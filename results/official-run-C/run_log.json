@@ -34,7 +34,7 @@
     "total_calls": 106,
     "cache_hits": 106,
     "by_stage": {
-      "bible": {
+      "summary": {
         "calls": 3,
         "cached": 3,
         "prompt_tokens": 16525,
@@ -102,7 +102,7 @@
     }
   },
   "stage_models": {
-    "bible": {
+    "summary": {
       "provider": "gemini",
       "model": "gemini-3.8-flash",
       "temperature": 0.0,

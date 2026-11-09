@@ -11,7 +11,7 @@
   const NODES = [
     ["shows", "input", "Screenplays", "50 episodes, timed lines", 1, 1],
     ["parse", "code", "Parse", "line IDs and safe cuts", 2, 1],
-    ["bible", "model", "Story bible", "plus a spoiler vote", 3, 1],
+    ["summary", "model", "Show summary", "plus a spoiler vote", 3, 1],
     ["client", "code", "Model client", "any OpenAI-compatible API", 4, 1, 3],
     ["backstop", "code", "Rule backstop", "keyword rules, no model", 1, 2],
     ["validate", "code", "Validate", "turns IDs into a legal cut", 2, 2],
@@ -27,8 +27,8 @@
 
   // [from, to, label, kind]   kind: "up"/"down" offsets a parallel pair, "under" curves below the row
   const EDGES = [
-    ["shows", "parse"], ["parse", "bible"], ["parse", "validate", "safe cuts"], ["parse", "backstop", "", "drop"],
-    ["bible", "cands"], ["cands", "validate", "IDs", "up"], ["validate", "cands", "hints", "down"],
+    ["shows", "parse"], ["parse", "summary"], ["parse", "validate", "safe cuts"], ["parse", "backstop", "", "drop"],
+    ["summary", "cands"], ["cands", "validate", "IDs", "up"], ["validate", "cands", "hints", "down"],
     ["backstop", "validate"], ["validate", "score", "valid clips"], ["score", "rank", "top 40"], ["rank", "select"],
     ["attention", "select"], ["select", "montage"], ["montage", "export"], ["select", "export", "30 singles", "under"],
     ["export", "review"],
@@ -52,16 +52,16 @@
       io: [["In", "Screenplay text"], ["Out", "Numbered lines, safe-cut test, and a compact view for the model: one line per block, ID first"]],
       files: [src("src/snipdeck/parse.py")],
     },
-    bible: {
+    summary: {
       sub: "Model · 1 call, plus 2 short votes",
-      what: `Reads the loglines and continuity notes for the whole show and writes a story bible: who is who (speaker
+      what: `Reads the loglines and continuity notes for the whole show and writes a show summary: who is who (speaker
         labels vary, so <i>BLOND NOBLEMAN</i> is mapped to Rupert), which twists sell the show and which late payoffs would
         spoil it.`,
       more: `Spoilers are decided by vote: the main call and two short extra calls each name spoiler episodes, and an episode
         counts if at least two of the three name it. The title twist is never treated as a spoiler. An editor can override
         the list in <code>config.yaml</code>.`,
       io: [["In", "Loglines, continuity notes, speaker counts"], ["Out", "Characters, selling twists, spoiler episodes"]],
-      files: [src("src/snipdeck/stages.py"), src("src/snipdeck/prompts/bible.md", "prompts/bible.md")],
+      files: [src("src/snipdeck/stages.py"), src("src/snipdeck/prompts/summary.md", "prompts/summary.md")],
     },
     client: {
       sub: "Code · used by every model box",
@@ -95,11 +95,11 @@
     },
     cands: {
       sub: "Model · 1 call per episode",
-      what: `Reads the story bible and one episode, then proposes three moments. Each is given only as line IDs: where to
+      what: `Reads the show summary and one episode, then proposes three moments. Each is given only as line IDs: where to
         start, the hook, the cliffhanger, where to end, and the line that would answer the cliffhanger. It also writes the
         question the clip leaves open and why it would work. It never writes a time.`,
       more: `Rejected proposals come back with the validator's hints, and the model picks again from the legal options.`,
-      io: [["In", "Story bible, one episode as numbered lines"], ["Out", "3 proposals per episode"]],
+      io: [["In", "Show summary, one episode as numbered lines"], ["Out", "3 proposals per episode"]],
       files: [src("src/snipdeck/stages.py"), src("src/snipdeck/prompts/candidates.md", "prompts/candidates.md")],
     },
     score: {
@@ -154,7 +154,7 @@
       sub: "Code",
       what: `Writes the ranked list as <code>promos.md</code>, <code>.csv</code> and <code>.json</code>: episode and in/out
         times for each part, hook, cliffhanger, open question, reasons, scores, flags and the script excerpt.`,
-      more: `It also saves every candidate and every rejection with its reason, the story bible, and a run log with the
+      more: `It also saves every candidate and every rejection with its reason, the show summary, and a run log with the
         models used, call counts and tokens.`,
       io: [["In", "Final singles and montages"], ["Out", "Files an editor can open, and the data this site shows"]],
       files: [src("src/snipdeck/export.py"), `<a href="${GH}results/official-run-C" target="_blank" rel="noopener">official run output</a>`],

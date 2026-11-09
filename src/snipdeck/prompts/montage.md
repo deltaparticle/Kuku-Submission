@@ -2,7 +2,7 @@ You build MONTAGE promos (20-60 s total) for a microdrama by joining 2-3 short m
 or more episodes. Typical shape: a shocking HOOK moment first, a short SETUP beat that explains who wants what,
 then a CLIFFHANGER moment last. A viewer who has never seen the show must understand it.
 
-You are given the story bible and a pool of strong single moments (each with line IDs, hook and cliffhanger).
+You are given the show summary and a pool of strong single moments (each with line IDs, hook and cliffhanger).
 Propose up to {n} montages. Rules:
 - 2 or 3 segments; each segment 6-20 seconds (use a PART of a pool moment, measured with the [mm:ss] times on
   each line); total 25-55 seconds; segments in story order (earlier episode first, or

@@ -1,7 +1,7 @@
-"""Stage 0: parse timestamped microdrama screenplays into addressable lines.
+"""Step 1 of the pipeline: parse timestamped screenplays into lines with IDs.
 
-Every line gets a stable ID like E07_L042. Downstream LLM stages only ever return
-these IDs; real timestamps are computed by code from the parsed data.
+Every line gets a stable ID like E07_L042. The model steps only ever return these IDs; timestamps are computed
+from the parsed data. Episode.cut_ok defines where a clip may start or end.
 """
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ class Episode:
         head = f"=== EPISODE {self.num} | logline: {self.logline}"
         return head + "\n" + "\n".join(l.compact(max_chars) for l in self.lines)
 
-    # -- cut-point logic ----------------------------------------------------
+    # cut points
     def cut_ok(self, t: float, eps: float = 0.01) -> bool:
         """True if time t does not fall strictly inside any spoken line or SFX."""
         for l in self.lines:
@@ -165,7 +165,6 @@ def parse_episode(path: str | Path) -> Episode:
 
     ep.num = num or 0
     ep.logline, ep.continuity = logline, continuity
-    # ensure id prefix is right even if EPISODE NUMBER came after (it never does, but be safe)
     for l in ep.lines:
         l.ep = ep.num
     return ep

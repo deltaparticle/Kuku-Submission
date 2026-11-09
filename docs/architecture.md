@@ -1,7 +1,7 @@
 # SnipDeck architecture
 
 The LLM only ever returns line IDs (e.g. `E07_L042`); code computes, snaps and validates every timestamp.
-Values below are from the current `config.yaml`, as used for the official run (run C, `llm-run-5`).
+Steps are numbered as in the README (§4). Values are from `config.yaml`, as used for the official run (`results/official-run-C`).
 
 ```mermaid
 flowchart TD
@@ -18,7 +18,7 @@ flowchart TD
     end
 
 
-    subgraph S0["STAGE 0 - parse.py (code)"]
+    subgraph S0["STEP 1 - parse.py (code)"]
         P1["Regex block parser<br/>Line{id E07_L042, kind, speaker, emotion,<br/>text, start, end, scene}"]
         P2["cut_ok(t): t not strictly inside a<br/>DIALOGUE or SFX line<br/>next_safe_after / prev_safe_before"]
         P3["compact(): LLM view<br/>E07_L012 [00:12.3] JULIANA (Cold): ..."]
@@ -42,20 +42,20 @@ flowchart TD
         H1 --> H2
     end
 
-    subgraph S1["STAGE 1 - story bible (gemini-3.8-flash, temp 0)"]
+    subgraph S1["STEP 2 - show summary (gemini-3.8-flash, temp 0)"]
         B1["Input: show title, loglines,<br/>continuity notes, speaker label counts"]
-        BIB["Bible JSON: premise, genre tropes,<br/>characters + aliases, episode roles,<br/>selling_reveals, late_payoffs{what, episodes}"]
+        BIB["Summary JSON: premise, genre tropes,<br/>characters + aliases, episode roles,<br/>selling_reveals, late_payoffs{what, episodes}"]
         SV["Spoiler vote: + 2 short passes (temp 0.5)<br/>episode = spoiler if named by >= 2 of 3<br/>(title twist never a spoiler)<br/>config late_payoff_episodes overrides"]
         B1 --> BIB --> SV
     end
 
-    subgraph S2["STAGE 2 - candidates (gemini-3-flash-preview, reasoning_effort low)"]
-        C1["1 call per episode: bible + compact episode<br/>3 moments, IDs only:<br/>start, hook, cliffhanger, end, answered_at,<br/>hook_type, cliffhanger_type, open_question, why"]
+    subgraph S2["STEP 3 - candidates (gemini-3-flash-preview, reasoning_effort low)"]
+        C1["1 call per episode: summary + compact episode<br/>3 moments, IDs only:<br/>start, hook, cliffhanger, end, answered_at,<br/>hook_type, cliffhanger_type, open_question, why"]
         C2["Repair call (per episode, if needed)<br/>ACCEPTED list + REJECTED reasons +<br/>HOW TO FIX: code-computed legal hook/end IDs<br/>tops the episode up to 3"]
         C3["Dedupe same moment (IoU >= 0.5)"]
     end
 
-    subgraph S3["STAGE 3 - validate.py (code)"]
+    subgraph S3["STEP 4 - validate.py (code)"]
         V["build_single()<br/>IDs exist, same episode<br/>start <= hook <= cliff <= end<br/>hook is not a CAMERA line"]
         V2["Cut at the cliffhanger: drop later dialogue,<br/>keep silent reaction beats <= 3 s<br/>never run into answered_at line"]
         V3["Start snap: hook within 3 s (lead-in 0.3 s),<br/>search back for a safe cut<br/>End snap: +0.4 s tail, before next spoken line"]
@@ -65,7 +65,7 @@ flowchart TD
         V4 -- no --> V5
     end
 
-    MERGE["Candidate pool<br/>LLM candidates + non-overlapping backstop picks<br/>renumbered P001..Pnnn (run C: 138 valid)"]
+    MERGE["Candidate pool<br/>LLM candidates + non-overlapping backstop picks<br/>renumbered P001..Pnnn (official run: 138 valid)"]
 
     subgraph ATT["attention.py - text attention proxy (code)"]
         A1["First 3 s: time to first voice, cuts,<br/>close-up, motion/impact, sound spike,<br/>vocal intensity, direct address, stakes words"]
@@ -75,14 +75,14 @@ flowchart TD
         A2 --> A3
     end
 
-    subgraph S4["STAGE 4 - rubric score (gemini-3.8-flash, temp 0, full thinking)"]
+    subgraph S4["STEP 5a - rubric score (gemini-3.8-flash, temp 0, full thinking)"]
         SC1["Batches of 40 clips, script excerpts (no CAMERA)<br/>evidence first: quote first 3 s + last lines<br/>calibrated: max two 5s per criterion, >= 25% get <= 2"]
         SC2["2 passes, batches reshuffled (seed 7+k)<br/>scores averaged, flag if any pass sets it"]
         SC3["6 criteria 1-5: hook_3s x3, cliffhanger x3,<br/>standalone x2, intensity x1, plot_relevance x1,<br/>trope_fit x1 -> composite 0-1<br/>flags: spoiler, ad_policy, needs_context"]
         SC1 --> SC2 --> SC3
     end
 
-    subgraph S5["STAGE 5 - rank + select"]
+    subgraph S5["STEP 5b - rank + select"]
         R1["Top 40 by composite -> listwise rank x3<br/>(shuffled order, seed 7; growth-lead persona:<br/>hook, cliffhanger, clarity, early episodes, no spoilers)"]
         R2["Borda count: position p earns N - p<br/>omitted ids share remaining positions<br/>borda = points / (runs * N)"]
         R3["final = 0.6*borda + 0.4*composite<br/>(x0.6 if outside the ranked pool)<br/>- 0.15 spoiler (judge flag OR vote episode)<br/>- 0.25 ad policy - 0.10 needs context<br/>- 0.10*(ep-1)/(N-1) late episode<br/>+ 0.15*(0.7*hook_att + 0.3*hold - 0.55)"]
@@ -94,17 +94,17 @@ flowchart TD
         R4 -- fail --> DROP["Kept in candidates_all.json,<br/>never in the final list"]
     end
 
-    subgraph S6["STAGE 6 - montages (gemini-3.8-flash, temp 0.2)"]
+    subgraph S6["STEP 6 - montages (gemini-3.8-flash, temp 0.2)"]
         M1["Pool: top 12 eligible, minus spoiler<br/>and ad-policy clips; asks for up to 8<br/>2-3 parts of 6-20 s, story order"]
         M2["build_montage(): 2-3 segments, each >= 3 s,<br/>no overlap, hook in segment 1 first 3 s,<br/>cliffhanger in last segment, total 20-60 s"]
         M3["1 repair round with reasons -> dedupe<br/>-> rubric score -> final_order<br/>keep if bar passed and composite >= 0.5 (max 5)"]
         M1 --> M2 --> M3
     end
 
-    subgraph S7["STAGE 7 - export.py -> outputs/show/run-id/"]
+    subgraph S7["STEP 7 - export.py -> outputs/show/run-id/"]
         E1["promos.md / promos.csv / promos.json<br/>episode + start/end per segment, hook, cliffhanger,<br/>open question, why, scores, flags, rank note,<br/>attention + flags, script excerpt"]
         E2["candidates_all.json: every valid clip +<br/>every rejection with reason and fix hint"]
-        E3["story_bible.json, run_log.json:<br/>counts, spoiler vote, models used per stage,<br/>tokens incl. thinking, seconds"]
+        E3["show_summary.json, run_log.json:<br/>counts, spoiler vote, models used per stage,<br/>tokens incl. thinking, seconds"]
     end
 
     subgraph HUM["HUMAN IN THE LOOP"]
@@ -128,17 +128,17 @@ flowchart TD
     CFG --> APP
     KEY --> LLMC
     SHOW --> BIB
-    %% ---------------- STAGE 0 ----------------
+    %% step 1
     CLI --> P1
     APP --> P1
     %% ---------------- LLM CLIENT ----------------
     %% ---------------- BASELINE / BACKSTOP ----------------
     P1 --> H1
-    %% ---------------- STAGE 1 ----------------
+    %% step 2
     P3 --> B1
     BIB -. calls .-> LLMC
     SV -. calls .-> LLMC
-    %% ---------------- STAGE 2 ----------------
+    %% step 3
     C1 --> V
     V -- "rejected + hint" --> C2
     C2 --> V
@@ -147,7 +147,7 @@ flowchart TD
     P3 --> C1
     C1 -. calls .-> LLMC
     C2 -. calls .-> LLMC
-    %% ---------------- STAGE 3 ----------------
+    %% step 4
     P2 --> V3
     H2 --> V
     %% ---------------- MERGE + ATTENTION ----------------
@@ -155,19 +155,19 @@ flowchart TD
     V4 -- "yes (heuristic)" --> MERGE
     MERGE --> A1
     MERGE --> A2
-    %% ---------------- STAGE 4 ----------------
+    %% step 5a
     MERGE --> SC1
     SC1 -. calls .-> LLMC
-    %% ---------------- STAGE 5 ----------------
+    %% step 5b
     SC3 --> R1
     A3 --> R3
     SV --> R3
     R1 -. calls .-> LLMC
-    %% ---------------- STAGE 6 ----------------
+    %% step 6
     R5 --> M1
     M1 -. calls .-> LLMC
     M3 -. calls .-> LLMC
-    %% ---------------- STAGE 7 ----------------
+    %% step 7
     R6 --> E1
     M3 --> E1
     V5 --> E2
@@ -199,23 +199,23 @@ flowchart TD
 Legend: purple = AI judgement (Gemini), green = deterministic code, blue = inputs, interfaces and outputs,
 orange = human, grey = storage. Dotted arrows to `llm.py` = model calls (all cached).
 
-## Compact version (for the 2-page doc)
+## Compact version
 
 ```mermaid
 flowchart LR
-    IN["50 episode<br/>screenplays"] --> P["0 Parse<br/>line IDs + safe cuts"]
-    P --> B["1 Story bible<br/>+ spoiler vote"]
-    P --> C["2 Candidates<br/>3 per episode, IDs only"]
+    IN["50 episode<br/>screenplays"] --> P["1 Parse<br/>line IDs + safe cuts"]
+    P --> B["2 Show summary<br/>+ spoiler vote"]
+    P --> C["3 Candidates<br/>3 per episode, IDs only"]
     B --> C
-    C <--> V{"3 Validate + snap<br/>20-60 s, hook in 3 s,<br/>end on cliffhanger"}
+    C <--> V{"4 Validate + snap<br/>20-60 s, hook in 3 s,<br/>end on cliffhanger"}
     V -- "rejected: legal-fix hints" --> C
     V --> AT["Text attention<br/>first voice, motion,<br/>dead air"]
-    V --> S["4 Rubric score<br/>6 criteria, 2 passes"]
-    S --> R["5 Rank<br/>3 shuffled runs, Borda<br/>+ penalties + quality bar<br/>+ diversity"]
+    V --> S["5a Score<br/>6 criteria, 2 passes"]
+    S --> R["5b Rank<br/>3 shuffled runs, Borda<br/>+ penalties + quality bar<br/>+ diversity"]
     AT --> R
     B -. spoiler episodes .-> R
     R --> M["6 Montages<br/>2-3 joined moments"]
-    R --> O["7 Ranked promos<br/>md / csv / json"]
+    R --> O["7 Export: ranked promos<br/>md / csv / json"]
     M --> O
     O --> H["Editor<br/>approve / reject"]
 

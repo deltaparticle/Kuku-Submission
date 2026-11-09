@@ -1,6 +1,8 @@
 """Figure for the 2-page paper. Every number is read from the saved run outputs (or recomputed from them).
 
   python scripts/utils/make_figures.py   ->  docs/paper/fig_results.pdf
+
+Panels (a) and (b) also read the earlier development runs in outputs/, which are not in the repository.
 """
 import collections
 import json

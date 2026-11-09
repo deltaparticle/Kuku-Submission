@@ -1,4 +1,11 @@
-"""LLM stages (1, 2, 4, 5, 6). The LLM proposes/judges; code validates, snaps and aggregates."""
+"""The model-driven steps of the pipeline, in the order pipeline.py calls them:
+
+    2 show summary      make_summary, spoiler_episodes
+    3 candidates        generate_candidates (validation lives in validate.py)
+    5 score and rank    score_promos, listwise_rank, apply_spoiler_policy, final_order, passes_bar, select_diverse
+    6 montages          build_montages
+
+The model proposes and judges; code validates, combines scores and selects."""
 from __future__ import annotations
 
 import asyncio
@@ -21,14 +28,14 @@ def prompt(name: str) -> str:
     return (PROMPTS / f"{name}.md").read_text(encoding="utf-8")
 
 
-class Bible(BaseModel):
+class ShowSummary(BaseModel):
     model_config = ConfigDict(extra="allow")
     premise: str = ""
 
 
-def bible_text(b: Bible | dict | None) -> str:
+def summary_text(b: ShowSummary | dict | None) -> str:
     if b is None:
-        return "(no bible)"
+        return "(no summary)"
     d = b.model_dump() if isinstance(b, BaseModel) else b
     return json.dumps(d, ensure_ascii=False, indent=1)
 
@@ -41,8 +48,8 @@ async def _ask(llm, *a, **k):
 
 
 async def _gather(coros: list, progress, stage: str) -> list:
-    """Run calls concurrently (the LLM client enforces per-provider limits); results come back IN INPUT ORDER,
-    so a run is reproducible no matter which call finishes first."""
+    """Run calls concurrently (llm.py enforces per-provider limits). Results come back in input order, so a run
+    is reproducible whichever call finishes first."""
     total, done = len(coros), 0
     progress(stage, 0, total)
 
@@ -56,8 +63,9 @@ async def _gather(coros: list, progress, stage: str) -> list:
     return list(await asyncio.gather(*(one(c) for c in coros)))
 
 
-# ---------------- Stage 1: story bible -------------------------------------
-def _bible_user(eps: list[Episode], show: str = "") -> str:
+# 2. Show summary
+
+def _summary_user(eps: list[Episode], show: str = "") -> str:
     spk = Counter(l.speaker for e in eps for l in e.lines if l.speaker)
     lines = [f"Ep {e.num}: {e.logline}\n   continuity: {e.continuity}" for e in eps]
     return ((f"SHOW TITLE: {show}\n\n" if show else "")
@@ -65,8 +73,8 @@ def _bible_user(eps: list[Episode], show: str = "") -> str:
             + "\n\nEPISODES:\n" + "\n".join(lines))
 
 
-async def make_bible(llm, eps: list[Episode], show: str = "") -> Bible:
-    return await _ask(llm, "bible", prompt("bible"), _bible_user(eps, show), Bible)
+async def make_summary(llm, eps: list[Episode], show: str = "") -> ShowSummary:
+    return await _ask(llm, "summary", prompt("summary"), _summary_user(eps, show), ShowSummary)
 
 
 class _Payoffs(BaseModel):
@@ -74,18 +82,18 @@ class _Payoffs(BaseModel):
     late_payoffs: list = []
 
 
-async def spoiler_episodes(llm, eps: list[Episode], show: str, bible: Bible,
+async def spoiler_episodes(llm, eps: list[Episode], show: str, summary: ShowSummary,
                            rules: dict) -> tuple[set[int], dict]:
     """Episodes treated as spoilers (late-show payoffs), made stable across runs.
 
     1. rules.late_payoff_episodes (a list in config.yaml) overrides everything: an editor's call per show.
-    2. Otherwise majority vote: the main bible plus (spoiler_votes - 1) short passes that only list late payoffs.
-       An episode counts if more than half of the passes name it, so boundary episodes that one pass adds
-       (e.g. 35 vs 35-36) stop flipping between runs."""
+    2. Otherwise majority vote: the main summary plus (spoiler_votes - 1) short passes that only list late payoffs.
+       An episode counts if more than half of the passes name it, so episodes that only one pass adds don't
+       change between runs."""
     fixed = rules.get("late_payoff_episodes")
     if isinstance(fixed, list):
         return {int(e) for e in fixed}, {"source": "config.yaml override"}
-    votes: Counter = Counter(late_payoff_episodes(bible))
+    votes: Counter = Counter(late_payoff_episodes(summary))
     passes = max(1, int(rules.get("spoiler_votes", 1)))
     ask = ("List ONLY the late payoffs for this show, as JSON: "
            '{"late_payoffs": [{"what": "...", "episodes": [n, ...]}]}. Use the definition of late payoffs in the '
@@ -94,7 +102,7 @@ async def spoiler_episodes(llm, eps: list[Episode], show: str, bible: Bible,
 
     async def one(k):
         try:
-            return await _ask(llm, "bible", prompt("bible"), f"[spoiler check {k}] " + ask + _bible_user(eps, show),
+            return await _ask(llm, "summary", prompt("summary"), f"[spoiler check {k}] " + ask + _summary_user(eps, show),
                               _Payoffs, temperature=float(rules.get("spoiler_vote_temperature", 0.5)))
         except (ValueError, RuntimeError):
             return None
@@ -113,11 +121,11 @@ async def spoiler_episodes(llm, eps: list[Episode], show: str, bible: Bible,
 RE_EPS = re.compile(r"\bEp(?:isode)?s?\.?\s*(\d+)(?:\s*(?:-|–|to|and|&)\s*(\d+))?", re.I)
 
 
-def late_payoff_episodes(bible: Bible | dict | None) -> set[int]:
-    """Episodes the bible says contain late-show payoffs (spoilers for a cold viewer). Deterministic use of the bible."""
-    if bible is None:
+def late_payoff_episodes(summary: ShowSummary | dict | None) -> set[int]:
+    """Episodes the summary lists as late-show payoffs (spoilers for a new viewer)."""
+    if summary is None:
         return set()
-    d = bible.model_dump() if isinstance(bible, BaseModel) else bible
+    d = summary.model_dump() if isinstance(summary, BaseModel) else summary
     out: set[int] = set()
     for item in d.get("late_payoffs") or []:
         if isinstance(item, dict):
@@ -134,7 +142,8 @@ def late_payoff_episodes(bible: Bible | dict | None) -> set[int]:
     return out
 
 
-# ---------------- Stage 2: candidate generation ----------------------------
+# 3. Candidates
+
 def _batches(xs, n):
     for i in range(0, len(xs), n):
         yield xs[i:i + n]
@@ -158,18 +167,18 @@ def _repair_note(bad: list[Rejected]) -> str:
     return "\n".join(rows)
 
 
-async def generate_candidates(llm, eps: list[Episode], bible: Bible, rules: dict, progress=lambda *_: None,
+async def generate_candidates(llm, eps: list[Episode], summary: ShowSummary, rules: dict, progress=lambda *_: None,
                               repair: bool = True) -> tuple[list[Promo], list[Rejected]]:
     em = {e.num: e for e in eps}
-    bt = bible_text(bible)
+    bt = summary_text(summary)
     want = int(rules.get("candidates_per_episode", 3))
     batches = list(_batches(eps, rules["episodes_per_batch"]))
 
     async def one(batch) -> tuple[list[Promo], list[Rejected]]:
-        user = "STORY BIBLE:\n" + bt + "\n\nEPISODES:\n" + "\n\n".join(e.compact() for e in batch)
+        user = "SHOW SUMMARY:\n" + bt + "\n\nEPISODES:\n" + "\n\n".join(e.compact() for e in batch)
         try:
             res = await _ask(llm, "candidates", prompt("candidates"), user, CandidateBatch)
-        except (ValueError, RuntimeError) as e:  # one bad batch must not kill the run
+        except (ValueError, RuntimeError) as e:  # a failed episode is logged as a rejection; the run continues
             nums = [x.num for x in batch]
             return [], [Rejected(source="llm", episode=nums[0],
                                  reason=f"candidate batch for episodes {nums} failed after retries: {str(e)[:160]}")]
@@ -204,7 +213,8 @@ async def generate_candidates(llm, eps: list[Episode], bible: Bible, rules: dict
     return promos, rejected
 
 
-# ---------------- Stage 4: rubric scoring ----------------------------------
+# 5. Score, rank and select
+
 def _score_block(p: Promo) -> str:
     segs = "; ".join(f"E{s.episode:02d} {s.start_ts}-{s.end_ts}" for s in p.segments)
     return (f"### {p.pid} | {segs} | {p.duration:.0f}s | proposed hook: {p.hook_line_id} | "
@@ -220,11 +230,11 @@ SCORE_KEYS = ("hook_3s", "standalone", "cliffhanger", "intensity", "plot_relevan
 FLAG_KEYS = ("spoiler_risk", "ad_policy_risk", "needs_context")
 
 
-async def score_promos(llm, promos: list[Promo], bible: Bible, rules: dict, weights: dict,
+async def score_promos(llm, promos: list[Promo], summary: ShowSummary, rules: dict, weights: dict,
                        progress=lambda *_: None) -> None:
-    """Rubric scoring. With score_passes > 1, every clip is scored again inside a differently shuffled batch and
+    """Judge scores. With score_passes > 1, every clip is scored again inside a differently shuffled batch and
     the scores are averaged: a clip's score then depends less on which other clips shared its batch."""
-    bt = bible_text(bible)
+    bt = summary_text(summary)
     passes = max(1, int(rules.get("score_passes", 1)))
     acc: dict[str, list] = {p.pid: [] for p in promos}
     plan = []
@@ -235,7 +245,7 @@ async def score_promos(llm, promos: list[Promo], bible: Bible, rules: dict, weig
         plan += list(_batches(order, rules["score_batch"]))
 
     async def one(batch):
-        user = "STORY BIBLE:\n" + bt + "\n\nCLIPS:\n" + "\n\n".join(_score_block(p) for p in batch)
+        user = "SHOW SUMMARY:\n" + bt + "\n\nCLIPS:\n" + "\n\n".join(_score_block(p) for p in batch)
         try:
             return batch, await _ask(llm, "score", prompt("score"), user, ScoreBatch)
         except (ValueError, RuntimeError):
@@ -250,7 +260,7 @@ async def score_promos(llm, promos: list[Promo], bible: Bible, rules: dict, weig
                 acc[sc.id].append(sc)
     for p in promos:
         got = acc[p.pid]
-        if not got:  # anything the judge skipped gets a zero composite so it sinks, visibly
+        if not got:  # a clip the judge skipped gets 0 and a note
             p.score_note = "not scored by judge (model error or omitted)"
             p.composite = 0.0
             continue
@@ -260,7 +270,6 @@ async def score_promos(llm, promos: list[Promo], bible: Bible, rules: dict, weig
         p.composite = composite(p.scores, weights)
 
 
-# ---------------- Stage 5: listwise ranking + diversity ---------------------
 def _rank_block(p: Promo) -> str:
     sc = ", ".join(f"{k}={v}" for k, v in p.scores.items())
     fl = ",".join(k for k, v in p.flags.items() if v) or "none"
@@ -278,7 +287,7 @@ async def listwise_rank(llm, promos: list[Promo], rules: dict,
     rng = random.Random(rules.get("seed", 7))
     runs = int(rules.get("rank_runs", 3))
     orders = []
-    for _ in range(runs):  # draw every shuffle up front: same orders whether runs execute in series or in parallel
+    for _ in range(runs):  # shuffle up front, so the orders don't depend on call timing
         order = ids[:]
         rng.shuffle(order)
         orders.append(order)
@@ -321,10 +330,9 @@ async def listwise_rank(llm, promos: list[Promo], rules: dict,
 def apply_spoiler_policy(promos: list[Promo], spoiler_eps: set[int], rules: dict) -> None:
     """Decide spoilers per show, not per clip.
 
-    The judge's per-clip spoiler flag is noisy and keeps flagging the title twist (e.g. the Duke reveal) because the
-    main bible lists it as a payoff. With rules.spoiler_source = "vote" (default), spoiler_risk is set from the
-    voted/override episode list only; the judge's opinion is kept as judge_spoiler for transparency.
-    "judge_or_vote" restores the old behaviour (either source flags the clip)."""
+    The judge's per-clip spoiler flag changes between runs and tends to flag the title twist. With
+    rules.spoiler_source = "vote" (default), spoiler_risk comes from the voted (or config) episode list only, and
+    the judge's flag is kept as judge_spoiler. With "judge_or_vote", either source flags the clip."""
     by_vote = rules.get("spoiler_source", "vote") == "vote"
     for p in promos:
         judge = bool(p.flags.get("spoiler_risk")) or bool(p.flags.get("judge_spoiler"))
@@ -336,11 +344,10 @@ def apply_spoiler_policy(promos: list[Promo], spoiler_eps: set[int], rules: dict
 
 def final_order(promos: list[Promo], ranks: dict[str, dict], rules: dict, spoiler_eps: set[int] | None = None,
                 n_episodes: int | None = None) -> list[Promo]:
-    """final = blend of listwise rank (Borda) and rubric composite, minus deterministic penalties.
+    """final = w * rank (Borda) + (1 - w) * judge composite, minus penalties, plus a small attention term.
 
-    Penalties: spoiler (judge flag OR an episode the story bible lists as a late payoff), ad-policy risk,
-    needs-context, and a small preference for earlier episodes (a cold viewer starts the show from there).
-    Plus a small nudge from the text attention proxy (attention.py): early voice, motion, close-ups, no dead air."""
+    Penalties: spoiler, ad-policy risk, needs-context, and a small preference for earlier episodes (a new viewer
+    starts the show from there). The attention term comes from attention.py."""
     w = rules["final_llm_weight"]
     spoiler_eps = spoiler_eps or set()
     n_eps = n_episodes or max((s.episode for p in promos for s in p.segments), default=1)
@@ -352,7 +359,7 @@ def final_order(promos: list[Promo], ranks: dict[str, dict], rules: dict, spoile
         r = ranks.get(p.pid)
         base = p.composite if r is None else w * r["borda"] + (1 - w) * p.composite
         if r is None and ranks:
-            base *= 0.6  # outside the LLM-ranked pool: keep, but below ranked ones
+            base *= 0.6  # not in the ranked pool: keep it, below the ranked clips
         pen, tags = 0.0, []
         for flag, key in (("spoiler_risk", "penalty_spoiler"), ("ad_policy_risk", "penalty_policy"),
                           ("needs_context", "penalty_needs_context")):
@@ -361,7 +368,7 @@ def final_order(promos: list[Promo], ranks: dict[str, dict], rules: dict, spoile
                 tags.append(flag.replace("_risk", "").replace("_", " "))
         pen += rules.get("penalty_late_episode", 0.0) * (min(eps_) - 1) / max(1, n_eps - 1)
         aw = rules.get("attention_weight", 0.0)
-        if aw and p.attention:  # text attention proxy: small nudge, centred so an average clip is unaffected
+        if aw and p.attention:  # centred, so an average clip is unaffected
             att = 0.7 * p.attention.get("hook_attention", 0.5) + 0.3 * p.attention.get("hold", 0.5)
             pen -= aw * (att - rules.get("attention_center", 0.55))
         p.final = round(base - pen, 4)
@@ -394,10 +401,10 @@ def _overlap(a: Promo, b: Promo) -> bool:
 
 
 def select_diverse(ordered: list[Promo], rules: dict, k: int) -> list[Promo]:
-    """Greedy MMR: relevance minus similarity to what is already picked; per-episode cap."""
+    """Pick k clips greedily: score minus similarity to clips already picked, at most max_per_episode per episode."""
     chosen: list[Promo] = []
-    # Overlapping versions of the same scene compete on score alone, BEFORE the diversity nudges: otherwise a
-    # small same-hook-type penalty can pick the weaker cut of a scene and then block the better one as an overlap.
+    # Overlapping cuts of the same scene compete on score alone first, so the diversity penalty can't pick the
+    # weaker cut and then block the better one as an overlap.
     pool: list[Promo] = []
     for p in sorted(ordered, key=lambda p: (-p.final, p.pid)):
         if not any(_overlap(p, q) for q in pool):
@@ -429,10 +436,11 @@ def select_diverse(ordered: list[Promo], rules: dict, k: int) -> list[Promo]:
     return chosen
 
 
-# ---------------- Stage 6: montage (v2) -------------------------------------
-async def build_montages(llm, ranked: list[Promo], eps: list[Episode], bible: Bible, rules: dict,
+# 6. Montages
+
+async def build_montages(llm, ranked: list[Promo], eps: list[Episode], summary: ShowSummary, rules: dict,
                    start_no: int, spoiler_eps: set[int] | None = None) -> tuple[list[Promo], list[Rejected]]:
-    """AI proposes 2-3-segment montages from the strongest moments; code validates; one repair round."""
+    """The model joins 2-3 of the strongest moments into montages; validate.py checks them; one repair round."""
     em = {e.num: e for e in eps}
     spoiler_eps = spoiler_eps or set()
     pool = [p for p in ranked if not (spoiler_eps & {s.episode for s in p.segments})
@@ -443,7 +451,7 @@ async def build_montages(llm, ranked: list[Promo], eps: list[Episode], bible: Bi
         blocks.append(f"### {p.pid} E{s.episode:02d} {s.start_ts}-{s.end_ts} ({p.duration:.0f}s) | hook {p.hook_line_id}"
                       f" | ends {p.cliffhanger_line_id} | open q: {p.open_question}\n" + "\n".join(p.excerpt))
     logs = "\n".join(f"Ep {e.num}: {e.logline}" for e in eps)
-    user = ("STORY BIBLE:\n" + bible_text(bible) + "\n\nEPISODE LOGLINES:\n" + logs +
+    user = ("SHOW SUMMARY:\n" + summary_text(summary) + "\n\nEPISODE LOGLINES:\n" + logs +
             "\n\nPOOL OF STRONG MOMENTS (with line IDs and times):\n" + "\n\n".join(blocks))
     sysm = prompt("montage").replace("{n}", str(rules["montage_count"]))
     out: list[Promo] = []
@@ -476,7 +484,6 @@ async def build_montages(llm, ranked: list[Promo], eps: list[Episode], bible: Bi
             bad += check(res2.montages)
         except (ValueError, RuntimeError):
             pass
-    # drop duplicates (same segments) keeping the first
     seen, uniq = set(), []
     for m in out:
         key = tuple((s.episode, s.start, s.end) for s in m.segments)

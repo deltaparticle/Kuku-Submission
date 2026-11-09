@@ -1,4 +1,4 @@
-"""Stage 7: write unedited run outputs (JSON for machines, MD/CSV for editors, plus the run log)."""
+"""Step 7 of the pipeline: write a run's outputs (promos.md / .csv / .json, every candidate, the run log)."""
 from __future__ import annotations
 
 import csv
@@ -29,8 +29,8 @@ def to_markdown(res: dict, show: str) -> str:
            + (f" + {log['montages']} montages" if log['montages'] else ""), "",
            "Timestamps are screenplay times (mm:ss.ss) in the named episode. All times were computed by code "
            "from line IDs and snapped to safe cut points; none were written by the model.", ""]
-    if res.get("bible") is not None:
-        out += [f"**Premise (model-written):** {getattr(res['bible'], 'premise', '')}", ""]
+    if res.get("show_summary") is not None:
+        out += [f"**Premise (model-written):** {getattr(res['show_summary'], 'premise', '')}", ""]
 
     def card(p: Promo, label: str):
         out.append(f"## {label} — {p.pid} · {seg_str(p)} · {p.duration:.0f}s")
@@ -78,11 +78,11 @@ def to_csv(res: dict) -> str:
 
 
 def payload(res: dict, show: str, episode_durations: dict | None = None) -> dict:
-    """Everything a viewer (the web app) needs, as one JSON-able dict."""
+    """Everything the website needs, as one JSON-able dict."""
     dump = lambda objs: [o.model_dump() for o in objs]  # noqa: E731
     return {"show": show, "promos": dump(res["promos"]), "montages": dump(res["montages"]),
             "candidates": dump(res["all_candidates"]), "rejected": dump(res["rejected"]),
-            "bible": res["bible"].model_dump() if res.get("bible") is not None else None,
+            "show_summary": res["show_summary"].model_dump() if res.get("show_summary") is not None else None,
             "run_log": json.loads(json.dumps(res["run_log"], default=str)),
             "episode_durations": episode_durations or {},
             "markdown": to_markdown(res, show), "csv": to_csv(res)}
@@ -100,8 +100,8 @@ def write_all(res: dict, out_dir: str | Path, show: str) -> Path:
         ensure_ascii=False, indent=2), encoding="utf-8")
     (d / "run_log.json").write_text(json.dumps(res["run_log"], ensure_ascii=False, indent=2, default=str),
                                     encoding="utf-8")
-    if res.get("bible") is not None:
-        (d / "story_bible.json").write_text(json.dumps(res["bible"].model_dump(), ensure_ascii=False, indent=2),
+    if res.get("show_summary") is not None:
+        (d / "show_summary.json").write_text(json.dumps(res["show_summary"].model_dump(), ensure_ascii=False, indent=2),
                                             encoding="utf-8")
     (d / "promos.md").write_text(to_markdown(res, show), encoding="utf-8")
     (d / "promos.csv").write_text(to_csv(res), encoding="utf-8-sig", newline="")
